@@ -1,0 +1,10 @@
+{
+  "name": "Porters Lake Dental Clinic",
+  "description": "Porters Lake Dental - We make excellent oral health easy. Modern family dentistry with advanced care.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
