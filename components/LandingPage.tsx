@@ -22,7 +22,7 @@ export default function LandingPage() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-20 overflow-hidden">
+      <section className="relative pt-6 sm:pt-28 lg:pt-32 pb-12 sm:pb-20 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-400/10 blur-[120px] rounded-full" />

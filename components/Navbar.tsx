@@ -13,13 +13,17 @@ export const Navbar = () => {
   const { currentUser, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/60 transition-all">
-      <div className="bg-blue-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 text-center text-[11px] sm:text-xs md:text-sm font-medium relative z-[60] leading-snug sm:leading-relaxed">
+    <>
+      {/* Announcement Bar - in normal flow above header, scrolls away naturally */}
+      <div className="bg-blue-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 text-center text-[11px] sm:text-xs md:text-sm font-medium relative z-30 leading-snug sm:leading-relaxed">
         <div className="max-w-7xl mx-auto">
           Friendly reminder: We would like to advise patients that we are not affiliated with or expanding into a hygiene only practice. We are proud to continue to provide full hygiene and dental care at 5141 Nova Scotia Trunk 7. Thank you!
         </div>
       </div>
-      <nav className="relative z-50">
+
+      {/* Main Navigation Header - Sticky at top:0 for full page scroll */}
+      <header className="sticky top-0 left-0 right-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/60 transition-all">
+        <nav className="relative z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 sm:h-16 items-center">
           <Link href="/" className="flex items-center space-x-2 shrink-0 py-1" aria-label="Porters Lake Dental Home">
@@ -293,5 +297,6 @@ export const Navbar = () => {
       </AnimatePresence>
     </nav>
     </header>
+    </>
   );
 };

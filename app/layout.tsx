@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import { BackToTop } from '@/components/BackToTop';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,8 +25,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <body suppressHydrationWarning className="font-sans antialiased bg-slate-50 text-slate-900">
         <AuthProvider>
           {children}
+          <BackToTop />
         </AuthProvider>
       </body>
     </html>
   );
 }
+
