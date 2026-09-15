@@ -32,7 +32,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       {/* Header */}
-      <header className="pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-20 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-4 sm:pb-6 px-4 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-400/10 blur-[120px] rounded-full" />
@@ -41,20 +41,20 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto text-center">
           <Link 
             href="/" 
-            className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-6 sm:mb-8 hover:-translate-x-1 transition-transform"
+            className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-3 sm:mb-4 hover:-translate-x-1 transition-transform"
             aria-label="Back to Home Page"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             <span>Back to Home</span>
           </Link>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold text-slate-900 mb-4 sm:mb-6">Get in <span className="text-gradient">Touch</span></h1>
-          <p className="text-sm sm:text-lg text-slate-500 max-w-2xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-2 sm:mb-3 tracking-tight">Get in <span className="text-gradient">Touch</span></h1>
+          <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
             Have questions? We&apos;re here to help. Contact us via phone, email, or visit our clinic.
           </p>
         </div>
       </header>
 
-      <section className="py-12 sm:py-20 px-4">
+      <section className="py-6 sm:py-10 lg:py-12 px-4">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
           {/* Contact Info */}
           <div className="space-y-8 sm:space-y-12">

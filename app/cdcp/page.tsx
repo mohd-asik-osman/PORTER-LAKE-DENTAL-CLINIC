@@ -6,12 +6,12 @@ export default function CDCPPage() {
   return (
     <div className="min-h-screen bg-[#FDFCFB]">
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-20">
-        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 mb-4 sm:mb-6 font-sans leading-tight">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 lg:pt-12 pb-8 sm:pb-16">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 mb-3 sm:mb-4 font-sans leading-tight">
           Canadian Dental Care Plan (CDCP) — Accepted at Our Dental Office
         </h1>
         
-        <p className="text-base sm:text-xl text-slate-600 mb-8 sm:mb-10 leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-600 mb-6 sm:mb-8 leading-relaxed">
           We proudly accept the Canadian Dental Care Plan (CDCP). Learn who qualifies, what&apos;s covered, and how to apply for this federal dental benefit program.
         </p>
 

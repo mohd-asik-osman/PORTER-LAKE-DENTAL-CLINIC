@@ -36,7 +36,7 @@ export default function BecomeAPatientPage() {
       <Navbar />
       
       {/* Hero Section */}
-      <header className="pt-20 sm:pt-28 lg:pt-32 pb-10 sm:pb-12 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-6 sm:pb-8 px-4 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-400/10 blur-[120px] rounded-full" />
@@ -46,15 +46,15 @@ export default function BecomeAPatientPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold uppercase tracking-wider mb-4 sm:mb-6"
+            className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4"
           >
             <Smile className="w-3.5 h-3.5 fill-current shrink-0" />
             <span>Welcome to Porters Lake Dental</span>
           </motion.div>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold text-slate-900 mb-4 sm:mb-6">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-3 sm:mb-4 tracking-tight">
             Become a <span className="text-gradient">Patient</span>
           </h1>
-          <p className="text-sm sm:text-lg text-slate-600 max-w-3xl mx-auto mb-6 sm:mb-10 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto mb-5 sm:mb-6 leading-relaxed">
             We&apos;re always accepting new patients, and would be proud to show you and your family how uncomplicated professional dental care can be. Whether you&apos;re from Porters Lake or farther away, you&apos;ll appreciate our relaxing clinic, warm approach, and experienced people.
           </p>
         </div>

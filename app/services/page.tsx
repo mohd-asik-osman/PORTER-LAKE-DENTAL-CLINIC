@@ -69,30 +69,30 @@ export default function ServicesPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       {/* Header */}
-      <header className="pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-20 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-6 sm:pb-8 px-4 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-400/10 blur-[120px] rounded-full" />
         </div>
 
         <div className="max-w-7xl mx-auto text-center">
-          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-6 sm:mb-8 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
+          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-3 sm:mb-4 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
             <ChevronLeft className="w-4 h-4" />
             <span>Back to Home</span>
           </Link>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold text-slate-900 mb-4 sm:mb-6">Our Specialized <span className="text-gradient">Services</span></h1>
-          <p className="text-sm sm:text-lg text-slate-500 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-3 sm:mb-4 tracking-tight">Our Specialized <span className="text-gradient">Services</span></h1>
+          <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto mb-5 sm:mb-6 leading-relaxed">
             We offer a comprehensive list of services to meet the dental needs of you and your family. Using state-of-the-art technologies, our goal is to treat every patient with compassion and professionalism, which will have you leaving our office with a smile. Learn more about the services we offer at Porter&apos;s Lake Dental.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <Link href="/services" className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 sm:py-4 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 transition-all text-center flex items-center justify-center">Learn more</Link>
-            <Link href="/booking" className="w-full sm:w-auto min-h-[48px] px-8 py-4 rounded-2xl bg-white text-slate-900 font-bold border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all text-center flex items-center justify-center">Book now</Link>
+            <Link href="/services" className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 sm:py-4 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 transition-all text-center flex items-center justify-center text-sm sm:text-base">Learn more</Link>
+            <Link href="/booking" className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 sm:py-4 rounded-2xl bg-white text-slate-900 font-bold border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all text-center flex items-center justify-center text-sm sm:text-base">Book now</Link>
           </div>
         </div>
       </header>
 
       {/* Services Grid */}
-      <section className="py-12 sm:py-20 px-4">
+      <section className="py-8 sm:py-12 lg:py-14 px-4">
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {SERVICES.map((service, i) => (
             <motion.div 

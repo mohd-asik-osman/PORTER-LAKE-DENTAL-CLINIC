@@ -14,9 +14,9 @@ export default function PrivacyPolicyPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       
-      <header className="pt-32 pb-16 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-6 sm:pb-8 px-4 relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center">
-          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-8 hover:-translate-x-1 transition-transform">
+          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-3 sm:mb-4 hover:-translate-x-1 transition-transform">
             <ChevronLeft className="w-4 h-4" />
             <span>Back to Home</span>
           </Link>
@@ -24,15 +24,15 @@ export default function PrivacyPolicyPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-slate-900 mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-3 sm:mb-4 tracking-tight">
               Privacy <span className="text-gradient">Policy</span>
             </h1>
-            <p className="text-slate-500 font-medium">Last Updated: {lastUpdated}</p>
+            <p className="text-slate-500 font-medium text-xs sm:text-sm">Last Updated: {lastUpdated}</p>
           </motion.div>
         </div>
       </header>
 
-      <section className="pb-24 px-4">
+      <section className="pb-12 sm:pb-16 px-4">
         <div className="max-w-4xl mx-auto bg-white rounded-[40px] p-8 md:p-16 shadow-xl border border-slate-100">
           <div className="prose prose-slate max-w-none">
             <div className="flex items-center gap-4 mb-8 p-6 bg-blue-50 rounded-3xl border border-blue-100">

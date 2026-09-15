@@ -200,21 +200,21 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-20">
+      <div className="pt-6 sm:pt-10 lg:pt-12 pb-6 sm:pb-8">
         <div className="max-w-4xl mx-auto px-3 sm:px-6">
-          <div className="mb-8 sm:mb-12 flex flex-col items-center text-center">
-            <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-6 sm:mb-8 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
+          <div className="mb-4 sm:mb-6 flex flex-col items-center text-center">
+            <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-3 sm:mb-4 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
               <ChevronLeft className="w-4 h-4" />
               <span>Back to Home</span>
             </Link>
-            <div className="inline-block border-2 border-blue-100 rounded-2xl sm:rounded-3xl px-5 sm:px-8 py-4 sm:py-6 bg-white shadow-sm max-w-full">
-              <h1 className="text-2xl sm:text-4xl font-display font-bold text-slate-900 mb-2 sm:mb-4">Book Your Visit</h1>
+            <div className="inline-block border-2 border-blue-100 rounded-2xl sm:rounded-3xl px-4 sm:px-6 py-3 sm:py-4 bg-white shadow-sm max-w-full">
+              <h1 className="text-2xl sm:text-4xl font-display font-bold text-slate-900 mb-1 sm:mb-2 tracking-tight">Book Your Visit</h1>
               <p className="text-xs sm:text-base text-slate-500">Simple, fast, and secure dental appointment booking.</p>
             </div>
           </div>
 
         {/* Progress Bar */}
-        <div className="flex items-center justify-center space-x-1.5 sm:space-x-4 mb-8 sm:mb-12 px-2" role="navigation" aria-label="Booking progress">
+        <div className="flex items-center justify-center space-x-1.5 sm:space-x-4 mb-4 sm:mb-6 px-2" role="navigation" aria-label="Booking progress">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="flex items-center">
               <div 
@@ -231,14 +231,14 @@ export default function BookingPage() {
           ))}
         </div>
 
-        <div className="glass rounded-2xl sm:rounded-3xl md:rounded-[40px] p-4 sm:p-8 md:p-12 shadow-xl sm:shadow-2xl border border-white/40">
+        <div className="glass rounded-2xl sm:rounded-3xl md:rounded-[40px] p-4 sm:p-8 md:p-10 shadow-xl sm:shadow-2xl border border-white/40">
           {/* Step 1: Select Service */}
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <h2 
                 ref={stepHeadingRef}
                 tabIndex={-1}
-                className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-6 sm:mb-8 flex items-center space-x-3 outline-none"
+                className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-4 sm:mb-6 flex items-center space-x-3 outline-none"
               >
                 <Stethoscope className="text-blue-600 shrink-0 w-6 h-6" />
                 <span>Select a Service</span>
@@ -252,7 +252,7 @@ export default function BookingPage() {
                       setStep(2);
                     }}
                     aria-label={`Select ${service.title} - ${service.price}`}
-                    className={`p-4 sm:p-6 rounded-2xl border text-left transition-all focus:ring-4 focus:ring-blue-500/20 outline-none active:scale-[0.99] ${
+                    className={`p-4 sm:p-5 min-h-[96px] rounded-2xl border text-left flex flex-col justify-between transition-all focus:ring-4 focus:ring-blue-500/20 outline-none active:scale-[0.99] ${
                       selectedService === service.title 
                         ? 'bg-blue-50 border-blue-600 ring-4 ring-blue-500/10' 
                         : 'bg-white border-slate-100 hover:border-blue-200 hover:bg-slate-50'

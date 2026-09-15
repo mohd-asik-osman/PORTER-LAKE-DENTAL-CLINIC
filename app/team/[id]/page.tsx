@@ -66,13 +66,13 @@ export default function DentistProfilePage() {
     <div className="min-h-screen bg-[#FDFCFB]">
       <Navbar />
       
-      <main className="pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-24">
+      <main className="pt-6 sm:pt-10 lg:pt-12 pb-8 sm:pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="mb-6 sm:mb-12"
+            className="mb-4 sm:mb-6"
           >
             <Link href="/team" className="inline-flex items-center space-x-2 text-slate-400 hover:text-blue-600 font-medium transition-colors group" aria-label="Back to Team">
               <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

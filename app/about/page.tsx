@@ -13,25 +13,25 @@ export default function AboutPage() {
       <Navbar />
       
       {/* Header */}
-      <header className="pt-20 sm:pt-28 lg:pt-32 pb-12 sm:pb-16 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-4 sm:pb-6 px-4 relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center">
-          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-6 sm:mb-8 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
+          <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 font-bold mb-3 sm:mb-4 hover:-translate-x-1 transition-transform" aria-label="Back to Home">
             <ChevronLeft className="w-4 h-4" />
             <span>Back to Home</span>
           </Link>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold text-slate-900 mb-4 sm:mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-3 sm:mb-4 leading-tight tracking-tight">
             Excellent oral health <span className="text-gradient">made easy for you.</span>
           </h1>
-          <p className="text-sm sm:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto leading-relaxed">
             One of the best ways to ensure a lifetime of healthy teeth is to nurture a trusting, lifelong, and effortless relationship with your oral health professional. It’s why we’ve worked so hard to make your visits at our clinic not just enjoyable, but easy to maintain. Here’s how.
           </p>
         </div>
       </header>
 
       {/* Main Image */}
-      <section className="pb-12 sm:pb-20 px-4">
+      <section className="pb-8 sm:pb-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full overflow-hidden rounded-2xl sm:rounded-[40px] shadow-xl sm:shadow-2xl">
+          <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full overflow-hidden rounded-2xl sm:rounded-[32px] shadow-xl sm:shadow-2xl">
             <Image 
               src="https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/reflection.jpg.webp?itok=I2uM1Noq" 
               alt="Clinic Reflection" 
@@ -46,7 +46,7 @@ export default function AboutPage() {
       </section>
 
       {/* Detailed Description Section */}
-      <section className="py-12 sm:py-20 bg-white">
+      <section className="py-8 sm:py-12 lg:py-14 bg-white">
         <div className="max-w-4xl mx-auto px-4">
           <div className="space-y-8 sm:space-y-12 text-slate-700">
             <div className="flex flex-col md:flex-row gap-6 sm:gap-8 items-start">

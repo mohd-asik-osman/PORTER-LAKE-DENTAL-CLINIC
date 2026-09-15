@@ -50,9 +50,9 @@ export default function TeamPage() {
     <div className="min-h-screen bg-[#FDFCFB]">
       <Navbar />
       
-      <header className="pt-20 sm:pt-32 lg:pt-40 pb-12 sm:pb-24 px-4 relative overflow-hidden">
+      <header className="pt-6 sm:pt-10 lg:pt-12 pb-4 sm:pb-6 px-4 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-30 pointer-events-none">
-          <div className="absolute top-20 left-10 w-64 h-64 bg-blue-200 rounded-full blur-3xl" />
+          <div className="absolute top-10 left-10 w-64 h-64 bg-blue-200 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-cyan-100 rounded-full blur-3xl" />
         </div>
 
@@ -60,7 +60,7 @@ export default function TeamPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 sm:mb-8"
+            className="mb-3 sm:mb-4"
           >
             <Link href="/" className="inline-flex items-center space-x-2 text-slate-400 hover:text-blue-600 font-medium transition-colors group">
               <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
@@ -71,7 +71,7 @@ export default function TeamPage() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-slate-900 mb-6 sm:mb-8 tracking-tight"
+            className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-3 sm:mb-4 tracking-tight"
           >
             The Hands Behind <br />
             <span className="text-gradient">Your Smile</span>
@@ -81,33 +81,33 @@ export default function TeamPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-base sm:text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed"
+            className="text-sm sm:text-base md:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed"
           >
             Our team is defined by a shared passion for excellence and a commitment to compassionate, patient-centered care.
           </motion.p>
         </div>
       </header>
 
-      <section className="py-12 sm:py-24 px-4 bg-white">
+      <section className="py-6 sm:py-10 lg:py-12 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col items-center mb-10 sm:mb-20">
+          <div className="flex flex-col items-center mb-6 sm:mb-8">
             <motion.span 
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              className="text-[11px] sm:text-xs font-bold text-blue-600 uppercase tracking-[0.3em] mb-2 sm:mb-4"
+              className="text-[11px] sm:text-xs font-bold text-blue-600 uppercase tracking-[0.3em] mb-1.5 sm:mb-2"
             >
               Expertise & Care
             </motion.span>
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 text-center"
+              className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 text-center"
             >
               Our Dentists
             </motion.h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10 mb-16 sm:mb-32">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-8 mb-10 sm:mb-16">
             {DENTISTS.map((dentist, index) => (
               <Link 
                 key={dentist.name}

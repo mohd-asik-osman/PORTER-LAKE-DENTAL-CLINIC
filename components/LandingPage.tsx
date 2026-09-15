@@ -22,7 +22,7 @@ export default function LandingPage() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-6 sm:pt-28 lg:pt-32 pb-12 sm:pb-20 overflow-hidden">
+      <section className="relative pt-6 sm:pt-16 lg:pt-20 pb-8 sm:pb-12 lg:pb-14 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-400/10 blur-[120px] rounded-full" />
@@ -35,15 +35,15 @@ export default function LandingPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold uppercase tracking-wider mb-3 sm:mb-6">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">
                 <Star className="w-3.5 h-3.5 fill-current shrink-0" />
                 <span>Top Rated Dental Clinic</span>
               </div>
-              <h1 className="text-3xl sm:text-5xl md:text-7xl font-display font-bold text-slate-900 leading-[1.15] sm:leading-[1.1] mb-3 sm:mb-8 tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[60px] font-display font-bold text-slate-900 leading-[1.15] lg:leading-[1.1] mb-3 sm:mb-6 tracking-tight">
                 We make excellent <br className="hidden sm:inline" />
                 <span className="text-gradient">oral health easy</span>
               </h1>
-              <p className="text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-10 max-w-lg">
+              <p className="text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-8 max-w-lg">
                 Experience world-class dentistry in a comfortable environment. We use advanced technology to provide affordable, trusted care for your entire family.
               </p>
               <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
@@ -62,7 +62,7 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              <div className="mt-8 sm:mt-12 flex items-center space-x-4 sm:space-x-8">
+              <div className="mt-6 sm:mt-10 flex items-center space-x-4 sm:space-x-8">
                 <div className="flex -space-x-3 shrink-0">
                   {[1,2,3,4].map(i => (
                     <div key={i} className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
@@ -92,7 +92,7 @@ export default function LandingPage() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative mt-4 lg:mt-0"
             >
-              <div className="relative z-10 rounded-2xl sm:rounded-[40px] overflow-hidden shadow-2xl shadow-blue-200/50 aspect-[4/3] sm:aspect-square">
+              <div className="relative z-10 rounded-2xl sm:rounded-[36px] overflow-hidden shadow-2xl shadow-blue-200/50 aspect-[4/3] max-w-lg mx-auto w-full">
                 <Image 
                   src="https://www.porterslakedental.com/files/images/hero.jpg?v=4"
                   alt="Porters Lake Dental Hero"
@@ -109,15 +109,15 @@ export default function LandingPage() {
               <motion.div 
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-6 -right-6 glass p-4 rounded-2xl shadow-xl z-20 hidden md:block"
+                className="absolute -top-4 -right-4 glass p-3.5 sm:p-4 rounded-2xl shadow-xl z-20 hidden md:block"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Success Rate</p>
-                    <p className="text-lg font-bold text-slate-900">99.8%</p>
+                    <p className="text-base sm:text-lg font-bold text-slate-900">99.8%</p>
                   </div>
                 </div>
               </motion.div>
@@ -125,15 +125,15 @@ export default function LandingPage() {
               <motion.div 
                 animate={{ y: [0, 10, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -bottom-6 -left-6 glass p-4 rounded-2xl shadow-xl z-20 hidden md:block"
+                className="absolute -bottom-4 -left-4 glass p-3.5 sm:p-4 rounded-2xl shadow-xl z-20 hidden md:block"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Patients</p>
-                    <p className="text-lg font-bold text-slate-900">15,000+</p>
+                    <p className="text-base sm:text-lg font-bold text-slate-900">15,000+</p>
                   </div>
                 </div>
               </motion.div>
@@ -143,12 +143,12 @@ export default function LandingPage() {
       </section>
       
       {/* All the effort is ours Section */}
-      <section className="py-12 sm:py-24 px-4 bg-white">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-4 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-3 sm:mb-6">
             All the effort is ours.
           </h2>
-          <p className="text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-10">
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-6 sm:mb-8">
             For over 25 years, our locally owned and operated practice has been proudly serving the Porters Lake community and surrounding areas. We are committed to providing high-quality, personalized dental care in a welcoming environment. Our experienced team offers a full range of treatments—from routine dental hygiene and emergencies to advanced, high-tech procedures—ensuring that every member of your family receives the care they need. At Porters Lake Dental Centre, you’re not just a patient—you’re part of our community.
           </p>
           <Link 
@@ -162,10 +162,10 @@ export default function LandingPage() {
       </section>
 
       {/* Every dental service a family could need Section */}
-      <section className="py-12 sm:py-24 px-4 bg-slate-50">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-            <div className="relative aspect-[4/3] sm:aspect-square rounded-2xl sm:rounded-[40px] overflow-hidden shadow-xl sm:shadow-2xl">
+            <div className="relative aspect-[4/3] sm:aspect-[4/3] rounded-2xl sm:rounded-[32px] overflow-hidden shadow-xl sm:shadow-2xl">
               <Image 
                 src="https://www.porterslakedental.com/files/images/dental-chair.webp"
                 alt="Dental Chair"
@@ -176,7 +176,7 @@ export default function LandingPage() {
               />
             </div>
             <div>
-              <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-4 sm:mb-8 leading-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-4 sm:mb-6 leading-tight">
                 Every dental service a family could need.
               </h2>
               <Link 
@@ -192,20 +192,20 @@ export default function LandingPage() {
       </section>
 
       {/* No wonder Porters Lake families keep coming back Section */}
-      <section className="py-12 sm:py-24 px-4 bg-white">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-8 sm:mb-16 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-6 sm:mb-10 text-center">
             No wonder Porters Lake families keep coming back.
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-12 mb-8 sm:mb-16">
-            <div className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 sm:mb-4">Beautiful, calming office</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 mb-6 sm:mb-10">
+            <div className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 sm:mb-3">Beautiful, calming office</h3>
               <p className="text-xs sm:text-base text-slate-600 leading-relaxed">
                 Nestled amongst mature trees and designed with calming colours, our clinic is warm and welcoming.
               </p>
             </div>
-            <div className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 sm:mb-4">Easy insurance and payment</h3>
+            <div className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 sm:mb-3">Easy insurance and payment</h3>
               <p className="text-xs sm:text-base text-slate-600 leading-relaxed">
                 Our dental insurance process is hassle-free, and we offer every payment option you could need.
               </p>
@@ -224,18 +224,18 @@ export default function LandingPage() {
       </section>
 
       {/* Comprehensive family dentistry Section */}
-      <section className="py-12 sm:py-24 px-4 bg-blue-600 text-white overflow-hidden relative">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-blue-600 text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-32 -mt-32" />
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4 sm:mb-6">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-3 sm:mb-4">
             Comprehensive family dentistry
           </h3>
-          <p className="text-blue-100 text-sm sm:text-lg mb-6 sm:mb-10 leading-relaxed">
+          <p className="text-blue-100 text-sm sm:text-base mb-6 sm:mb-8 leading-relaxed">
             Everyone in the family will feel welcome, and receive exactly the care they need, delivered with kindness.
           </p>
           <Link 
             href="/services/family-dentistry" 
-            className="inline-flex items-center justify-center space-x-2 min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-5 rounded-2xl bg-white text-blue-600 font-bold shadow-xl hover:bg-slate-50 active:scale-95 transition-all text-sm sm:text-base w-full sm:w-auto"
+            className="inline-flex items-center justify-center space-x-2 min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-white text-blue-600 font-bold shadow-xl hover:bg-slate-50 active:scale-95 transition-all text-sm sm:text-base w-full sm:w-auto"
           >
             <span>More</span>
             <ChevronRight className="w-4 h-4 shrink-0" />
@@ -244,12 +244,12 @@ export default function LandingPage() {
       </section>
 
       {/* A dental clinic that cares Section */}
-      <section className="py-12 sm:py-24 px-4 bg-white">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-4 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-3 sm:mb-6">
             A dental clinic that cares.
           </h2>
-          <p className="text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-10">
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-6 sm:mb-8">
             At Porters Lake Dental Centre, we believe that everyone deserves a healthy, beautiful smile. Our team is dedicated to providing compassionate, high-quality dental care to patients of all ages. Whether you&apos;re due for a routine check-up or need more complex treatment, we&apos;re here to help you achieve your oral health goals. We take the time to listen to your concerns and develop personalized treatment plans that meet your unique needs. Our goal is to make every visit to our office a positive and comfortable experience.
           </p>
           <Link 
@@ -263,14 +263,14 @@ export default function LandingPage() {
       </section>
 
       {/* Your comfort is our priority Section */}
-      <section className="py-12 sm:py-24 px-4 bg-slate-50">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             <div className="order-2 lg:order-1">
-              <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-4 sm:mb-8 leading-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-3 sm:mb-6 leading-tight">
                 Your comfort is our priority.
               </h2>
-              <p className="text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-10">
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-6 sm:mb-8">
                 From the moment you walk through our doors, you&apos;ll feel at home in our warm and welcoming office. Our friendly staff is here to assist you with any questions you may have and ensure that your visit is as stress-free as possible. We offer a range of amenities to help you relax, including comfortable seating, refreshments, and entertainment options. Our treatment rooms are equipped with the latest technology to provide you with the most efficient and effective care. We&apos;re committed to creating a calming environment where you can feel confident in the care you receive.
               </p>
               <Link 
@@ -281,7 +281,7 @@ export default function LandingPage() {
                 <ChevronRight className="w-4 h-4 shrink-0" />
               </Link>
             </div>
-            <div className="order-1 lg:order-2 relative aspect-[4/3] sm:aspect-square rounded-2xl sm:rounded-[40px] overflow-hidden shadow-xl sm:shadow-2xl">
+            <div className="order-1 lg:order-2 relative aspect-[4/3] sm:aspect-[4/3] rounded-2xl sm:rounded-[32px] overflow-hidden shadow-xl sm:shadow-2xl">
               <Image 
                 src="https://www.porterslakedental.com/files/images/block-background-3.jpg"
                 alt="Comfortable Dental Office"
@@ -296,9 +296,9 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-12 sm:py-24 px-4 bg-white">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 mb-8 sm:mb-16 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-slate-900 mb-6 sm:mb-10 text-center">
             What our patients are saying.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
@@ -319,8 +319,8 @@ export default function LandingPage() {
                 rating: 5
               }
             ].map((testimonial, idx) => (
-              <div key={idx} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100 flex flex-col h-full">
-                <div className="flex items-center space-x-1 mb-3 sm:mb-4">
+              <div key={idx} className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100 flex flex-col h-full">
+                <div className="flex items-center space-x-1 mb-2.5 sm:mb-3">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                   ))}
@@ -330,7 +330,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="text-center mt-8 sm:mt-12">
+          <div className="text-center mt-6 sm:mt-10">
             <Link 
               href="https://www.google.com/search?q=porters+lake+dental+centre+reviews" 
               target="_blank"
@@ -344,25 +344,25 @@ export default function LandingPage() {
       </section>
 
       {/* Contact CTA Section */}
-      <section className="py-12 sm:py-24 px-4 bg-slate-900 text-white">
+      <section className="py-8 sm:py-14 lg:py-16 px-4 bg-slate-900 text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold mb-4 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-3 sm:mb-6">
             Ready to schedule your visit?
           </h2>
-          <p className="text-slate-400 text-sm sm:text-lg mb-6 sm:mb-10 leading-relaxed">
+          <p className="text-slate-400 text-sm sm:text-base mb-6 sm:mb-8 leading-relaxed">
             Contact us today to book your appointment or learn more about our services. We look forward to welcoming you to our practice!
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-6">
             <Link 
               href="/booking" 
-              className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-5 rounded-2xl bg-blue-600 text-white font-bold shadow-xl shadow-blue-900/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
+              className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-xl shadow-blue-900/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
             >
               <Calendar className="w-5 h-5 shrink-0" />
               <span>Book Appointment</span>
             </Link>
             <a 
               href="tel:9028274746" 
-              className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-5 rounded-2xl border-2 border-slate-700 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
+              className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl border-2 border-slate-700 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
             >
               <Phone className="w-5 h-5 shrink-0" />
               <span>(902) 827-4746</span>
