@@ -32,6 +32,7 @@ import dynamic from 'next/dynamic';
 import { toast, Toaster } from 'sonner';
 import { Logo } from '@/components/Logo';
 import { AddToCalendar } from '@/components/AddToCalendar';
+import { parseClinicDateTime, CLINIC_TIME_ZONE, formatClinicDateTime, isSuspiciousDate } from '@/lib/calendar';
 import { useAuth } from '@/lib/auth-context';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
@@ -162,11 +163,28 @@ export default function AdminDashboard() {
     setProcessingId('add-booking');
     
     try {
+      const parsed = parseClinicDateTime(newBookingData.date, newBookingData.time);
+      if (!parsed.isValid) {
+        toast.error(parsed.errorMessage || 'Invalid date or time');
+        setProcessingId(null);
+        return;
+      }
+
       const bookingId = crypto.randomUUID();
       const bookingData = {
-        ...newBookingData,
         id: bookingId,
-        status: 'approved', // Admin added bookings are approved by default
+        patientName: newBookingData.patientName,
+        patientEmail: newBookingData.patientEmail,
+        patientPhone: newBookingData.patientPhone,
+        service: newBookingData.service,
+        date: parsed.dateStr,
+        time: parsed.timeStr,
+        appointmentStartAt: parsed.appointmentStartAt,
+        appointmentEndAt: parsed.appointmentEndAt,
+        reminderDueAt: parsed.reminderDueAt,
+        timeZone: CLINIC_TIME_ZONE,
+        isSuspiciousDate: false,
+        status: 'approved',
         createdAt: new Date().toISOString()
       };
       
@@ -1029,7 +1047,13 @@ export default function AdminDashboard() {
 
                     <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50/80 p-2.5 rounded-xl">
                       <span className="font-semibold text-blue-600">{booking.service}</span>
-                      <span className="text-slate-500 font-medium">{booking.date} @ {booking.time}</span>
+                      <div className="text-right">
+                        {(booking.isSuspiciousDate || isSuspiciousDate(booking.date)) ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">⚠️ Needs Review ({booking.date})</span>
+                        ) : (
+                          <span className="text-slate-500 font-medium">{booking.date} @ {booking.time}</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pt-1">
@@ -1039,6 +1063,7 @@ export default function AdminDashboard() {
                           service: booking.service,
                           date: booking.date,
                           time: booking.time,
+                          appointmentStartAt: booking.appointmentStartAt,
                           patientName: booking.patientName
                         }}
                         variant="compact"
@@ -1130,8 +1155,19 @@ export default function AdminDashboard() {
                           <p className="text-sm text-slate-600 font-medium">{booking.service}</p>
                         </td>
                         <td className="px-6 lg:px-8 py-6">
-                          <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
-                          <p className="text-xs text-slate-400">{booking.time}</p>
+                          {(booking.isSuspiciousDate || isSuspiciousDate(booking.date)) ? (
+                            <div>
+                              <span className="inline-block px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold mb-1">
+                                ⚠️ Needs Review
+                              </span>
+                              <p className="text-xs text-slate-500">{booking.date} @ {booking.time}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
+                              <p className="text-xs text-slate-400">{booking.time}</p>
+                            </>
+                          )}
                         </td>
                         <td className="px-6 lg:px-8 py-6">
                           <AddToCalendar 
@@ -1139,6 +1175,7 @@ export default function AdminDashboard() {
                               service: booking.service,
                               date: booking.date,
                               time: booking.time,
+                              appointmentStartAt: booking.appointmentStartAt,
                               patientName: booking.patientName
                             }}
                             variant="compact"
