@@ -10,6 +10,7 @@ import {
 import { format, addDays, startOfToday, isSameDay, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isBefore } from 'date-fns';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { AddToCalendar } from '@/components/AddToCalendar';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 
@@ -542,50 +543,65 @@ export default function BookingPage() {
               aria-hidden="true"
             />
             <div 
-              className="relative w-full max-w-md glass p-8 md:p-12 rounded-[40px] shadow-2xl border border-white/40 text-center animate-in zoom-in-95 duration-300"
+              className="relative w-full max-w-lg glass p-6 sm:p-8 md:p-10 rounded-3xl sm:rounded-[40px] shadow-2xl border border-white/40 text-center animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
               role="dialog"
               aria-modal="true"
               aria-labelledby="modal-title"
             >
               <button 
                 onClick={resetForm}
-                className="absolute right-6 top-6 p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="absolute right-4 top-4 sm:right-6 sm:top-6 p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
                 aria-label="Close modal"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
 
-              <div className="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-8">
-                <CheckCircle2 className="w-10 h-10 text-green-600" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
               </div>
               
-              <h2 id="modal-title" className="text-3xl font-display font-bold text-slate-900 mb-4">Booking Confirmed!</h2>
+              <h2 id="modal-title" className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-3">Booking Confirmed!</h2>
               
-              <div className="bg-slate-50 rounded-2xl p-6 mb-8 text-left space-y-3">
-                <div className="flex justify-between text-sm">
+              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 mb-5 text-left space-y-2.5 text-xs sm:text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Service:</span>
                   <span className="font-bold text-slate-900">{selectedService}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Date:</span>
                   <span className="font-bold text-slate-900">{selectedDate ? format(selectedDate, 'MMMM do, yyyy') : ''}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Time:</span>
                   <span className="font-bold text-slate-900">{selectedTime}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Patient:</span>
+                  <span className="font-bold text-slate-900">{patientDetails.name}</span>
+                </div>
               </div>
+
+              {/* Calendar Integration */}
+              <AddToCalendar 
+                appointment={{
+                  service: selectedService,
+                  date: selectedDate || new Date(),
+                  time: selectedTime,
+                  patientName: patientDetails.name
+                }}
+                className="mb-6"
+              />
 
               <div className="space-y-3">
                 <Link 
                   href="/" 
-                  className="block w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all focus:ring-4 focus:ring-blue-500/20 outline-none"
+                  className="block w-full py-3.5 sm:py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all focus:ring-4 focus:ring-blue-500/20 outline-none text-sm sm:text-base"
                 >
                   Return to Home
                 </Link>
                 <button 
                   onClick={resetForm}
-                  className="block w-full py-4 bg-white text-slate-600 font-bold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all focus:ring-4 focus:ring-slate-500/10 outline-none"
+                  className="block w-full py-3.5 sm:py-4 bg-white text-slate-600 font-bold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all focus:ring-4 focus:ring-slate-500/10 outline-none text-sm sm:text-base"
                 >
                   Book Another Appointment
                 </button>

@@ -31,6 +31,7 @@ import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO
 import dynamic from 'next/dynamic';
 import { toast, Toaster } from 'sonner';
 import { Logo } from '@/components/Logo';
+import { AddToCalendar } from '@/components/AddToCalendar';
 import { useAuth } from '@/lib/auth-context';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
@@ -185,6 +186,31 @@ export default function AdminDashboard() {
       toast.error('Failed to add booking');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const [isRunningReminders, setIsRunningReminders] = useState(false);
+
+  const handleRunRemindersJob = async (force = false) => {
+    setIsRunningReminders(true);
+    try {
+      const res = await fetch('/api/cron/send-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force })
+      });
+      const data = await res.json();
+      if (res.ok && data.summary) {
+        const { totalChecked, sentCount, dueRemindersCount } = data.summary;
+        toast.success(`24h Reminders Job Finished! Checked ${totalChecked} appointments, sent ${sentCount} reminder emails (${dueRemindersCount} due).`);
+      } else {
+        toast.error(`Job alert: ${data.error || 'Failed to trigger reminders'}`);
+      }
+    } catch (err) {
+      console.error('Failed to trigger reminders job:', err);
+      toast.error('Network error triggering reminders job');
+    } finally {
+      setIsRunningReminders(false);
     }
   };
 
@@ -934,6 +960,19 @@ export default function AdminDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button 
+                  onClick={() => handleRunRemindersJob(false)}
+                  disabled={isRunningReminders}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-bold shadow-md shadow-indigo-200 disabled:opacity-50"
+                  title="Run 24-Hour Appointment Reminders Server Job"
+                >
+                  {isRunningReminders ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  ) : (
+                    <Bell className="w-3.5 h-3.5 text-white" />
+                  )}
+                  <span>{isRunningReminders ? 'Sending...' : 'Run 24h Reminders Job'}</span>
+                </button>
+                <button 
                   onClick={() => setIsAddBookingModalOpen(true)}
                   className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs font-bold shadow-md shadow-blue-200"
                 >
@@ -993,6 +1032,19 @@ export default function AdminDashboard() {
                       <span className="text-slate-500 font-medium">{booking.date} @ {booking.time}</span>
                     </div>
 
+                    <div className="pt-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Calendar Sync:</p>
+                      <AddToCalendar 
+                        appointment={{
+                          service: booking.service,
+                          date: booking.date,
+                          time: booking.time,
+                          patientName: booking.patientName
+                        }}
+                        variant="compact"
+                      />
+                    </div>
+
                     <div className="flex items-center justify-end space-x-2 pt-1">
                       {processingId === booking.id ? (
                         <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
@@ -1041,6 +1093,7 @@ export default function AdminDashboard() {
                     <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Patient Details</th>
                     <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service</th>
                     <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Date & Time</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Calendar Sync</th>
                     <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
                     <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                   </tr>
@@ -1048,7 +1101,7 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-8 py-12 text-center">
+                      <td colSpan={6} className="px-8 py-12 text-center">
                         <div className="flex flex-col items-center justify-center text-slate-400">
                           <Search className="w-8 h-8 mb-2 opacity-20" />
                           <p className="text-sm font-medium">No appointments found matching your filters</p>
@@ -1079,6 +1132,17 @@ export default function AdminDashboard() {
                         <td className="px-6 lg:px-8 py-6">
                           <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
                           <p className="text-xs text-slate-400">{booking.time}</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-6">
+                          <AddToCalendar 
+                            appointment={{
+                              service: booking.service,
+                              date: booking.date,
+                              time: booking.time,
+                              patientName: booking.patientName
+                            }}
+                            variant="compact"
+                          />
                         </td>
                         <td className="px-6 lg:px-8 py-6">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
