@@ -9,7 +9,7 @@ import {
   CheckCircle2, XCircle, Trash2, Heart,
   Search, Filter, MoreVertical, LayoutDashboard,
   TrendingUp, Loader2, Settings, User as UserIcon, Lock, Save,
-  X, ChevronDown, CalendarDays, Download, Mail
+  X, ChevronDown, CalendarDays, Download, Mail, Bell, Clock
 } from 'lucide-react';
 // Dynamically import Recharts components to reduce initial bundle size
 const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
