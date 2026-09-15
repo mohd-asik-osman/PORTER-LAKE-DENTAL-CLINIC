@@ -517,7 +517,7 @@ export default function AdminDashboard() {
   if (!currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex w-full max-w-full overflow-x-hidden">
       <Toaster position="top-right" richColors closeButton />
       {/* Sidebar */}
       <aside className="w-72 glass border-r border-white/20 hidden lg:flex flex-col p-8 fixed h-full z-20" role="navigation" aria-label="Admin Sidebar">
@@ -589,62 +589,51 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center p-3 z-50 safe-area-pb">
-        <button 
-          onClick={() => setActiveTab('overview')}
-          className={`flex flex-col items-center p-2 rounded-lg transition-colors ${activeTab === 'overview' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          <LayoutDashboard className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Overview</span>
-        </button>
-        <button 
-          onClick={() => {
-            setActiveTab('bookings');
-            setHasNewBookings(false);
-          }}
-          className={`flex flex-col items-center p-2 rounded-lg transition-colors relative ${activeTab === 'bookings' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          <Calendar className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Bookings</span>
-          {activeTab !== 'bookings' && hasNewBookings && (
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-          )}
-        </button>
-        <button 
-          onClick={() => setActiveTab('patients')}
-          className={`flex flex-col items-center p-2 rounded-lg transition-colors ${activeTab === 'patients' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          <Users className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Patients</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('analytics')}
-          className={`flex flex-col items-center p-2 rounded-lg transition-colors ${activeTab === 'analytics' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          <BarChart3 className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Analytics</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center p-2 rounded-lg transition-colors ${activeTab === 'settings' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          <Settings className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Settings</span>
-        </button>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-50 px-1 py-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] shadow-lg">
+        <div className="grid grid-cols-5 w-full items-center">
+          {[
+            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+            { id: 'bookings', label: 'Bookings', icon: Calendar, badge: hasNewBookings },
+            { id: 'patients', label: 'Patients', icon: Users },
+            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'settings', label: 'Settings', icon: Settings },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button 
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id as any);
+                  if (tab.id === 'bookings') setHasNewBookings(false);
+                }}
+                className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-0.5 rounded-xl transition-all relative ${
+                  isActive ? 'text-blue-600 font-bold bg-blue-50/80' : 'text-slate-500 hover:text-slate-900 font-medium'
+                }`}
+              >
+                <Icon className="w-5 h-5 mb-0.5 shrink-0" />
+                <span className="text-[11px] leading-none text-center truncate w-full">{tab.label}</span>
+                {tab.badge && activeTab !== 'bookings' && (
+                  <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-72 p-4 md:p-8 lg:p-12 pb-24 lg:pb-12">
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-12 gap-6">
+      <main className="flex-1 w-full max-w-full min-w-0 lg:ml-72 p-4 sm:p-6 lg:p-12 pb-28 lg:pb-12">
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-12 gap-4 md:gap-6">
           <div className="flex justify-between items-start md:block">
             <div>
-              <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-1 sm:mb-2">
                 {activeTab === 'overview' ? 'Admin Dashboard' : 
                  activeTab === 'bookings' ? 'Manage Bookings' : 
                  activeTab === 'patients' ? 'Patient Directory' : 
                  activeTab === 'analytics' ? 'Advanced Analytics' : 'Admin Settings'}
               </h1>
-              <p className="text-slate-500">
+              <p className="text-xs sm:text-sm text-slate-500">
                 {activeTab === 'overview' ? 'Manage clinic operations and patient records.' : 
                  activeTab === 'bookings' ? 'Review and update appointment statuses.' : 
                  activeTab === 'patients' ? 'View and manage patient information.' :
@@ -654,45 +643,46 @@ export default function AdminDashboard() {
             </div>
             <button 
               onClick={handleLogout}
-              className="lg:hidden p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+              className="lg:hidden p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0 ml-2"
               aria-label="Logout"
             >
-              <LogOut className="w-6 h-6" />
+              <LogOut className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
-            <div className="relative w-full md:w-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
+          <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64 min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
               <input 
                 type="text" 
                 placeholder="Search..."
                 aria-label="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all w-full md:w-64"
+                className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
-            <div className="relative w-full sm:w-auto">
+            <div className="relative shrink-0">
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`w-full sm:w-auto p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center space-x-2 ${showFilters ? 'ring-2 ring-blue-500/20 border-blue-500' : ''}`}
+                className={`px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center space-x-2 text-sm font-semibold text-slate-700 h-[42px] ${showFilters || statusFilter !== 'all' || serviceFilter !== 'all' ? 'ring-2 ring-blue-500/20 border-blue-500 text-blue-600' : ''}`}
               >
-                <Filter className="w-5 h-5 text-slate-600" />
+                <Filter className="w-4 h-4 text-slate-500" />
+                <span>Filter</span>
                 {(statusFilter !== 'all' || serviceFilter !== 'all') && (
-                  <span className="w-2 h-2 bg-blue-600 rounded-full absolute -top-1 -right-1" />
+                  <span className="w-2 h-2 bg-blue-600 rounded-full" />
                 )}
               </button>
 
               {showFilters && (
-                <div className="absolute right-0 mt-3 w-72 glass p-6 rounded-3xl border border-white/40 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-32px)] glass p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/40 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h3 className="font-bold text-slate-900">Filters</h3>
                     <button onClick={() => setShowFilters(false)} className="p-1 hover:bg-slate-100 rounded-lg">
                       <X className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status</label>
                       <select 
@@ -742,48 +732,50 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-8 mb-6 md:mb-12">
               {[
-                { label: 'Total Bookings', value: bookings.length, icon: Calendar, color: 'indigo', bgClass: 'bg-indigo-50', textClass: 'text-indigo-600' },
-                { label: 'Pending Approval', value: bookings.filter(b => b.status === 'pending').length, icon: CheckCircle2, color: 'yellow', bgClass: 'bg-yellow-50', textClass: 'text-yellow-600' },
-                { label: 'Approved', value: bookings.filter(b => b.status === 'approved').length, icon: CheckCircle2, color: 'green', bgClass: 'bg-emerald-50', textClass: 'text-emerald-600' },
-                { label: 'Rejected/Cancelled', value: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length, icon: XCircle, color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-600' },
+                { label: 'Total Bookings', value: bookings.length, icon: Calendar, bgClass: 'bg-indigo-50', textClass: 'text-indigo-600' },
+                { label: 'Pending Approval', value: bookings.filter(b => b.status === 'pending').length, icon: CheckCircle2, bgClass: 'bg-yellow-50', textClass: 'text-yellow-600' },
+                { label: 'Approved', value: bookings.filter(b => b.status === 'approved').length, icon: CheckCircle2, bgClass: 'bg-emerald-50', textClass: 'text-emerald-600' },
+                { label: 'Rejected / Cancelled', value: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length, icon: XCircle, bgClass: 'bg-red-50', textClass: 'text-red-600' },
               ].map((stat) => (
-                <div key={stat.label} className="glass p-8 rounded-3xl border border-white/40">
-                  <div className={`w-12 h-12 rounded-2xl ${stat.bgClass} flex items-center justify-center mb-6`}>
-                    <stat.icon className={`${stat.textClass} w-6 h-6`} />
+                <div key={stat.label} className="glass p-3.5 sm:p-5 lg:p-8 rounded-2xl sm:rounded-3xl border border-white/40 flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-2 sm:mb-4">
+                    <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1">{stat.label}</span>
+                    <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-xl ${stat.bgClass} flex items-center justify-center shrink-0 ml-1`}>
+                      <stat.icon className={`${stat.textClass} w-3.5 h-3.5 sm:w-5 sm:h-5`} />
+                    </div>
                   </div>
-                  <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-1">{stat.label}</p>
-                  <p className="text-3xl font-display font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-display font-bold text-slate-900">{stat.value}</p>
                 </div>
               ))}
             </div>
 
             {/* Analytics Chart */}
-            <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl mb-12">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+            <div className="glass p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl mb-8 md:mb-12">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
                 <div>
-                  <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                    Booking Trends
+                  <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span>Booking Trends</span>
                   </h2>
-                  <p className="text-sm text-slate-500">Monthly breakdown of appointment volume</p>
+                  <p className="text-xs sm:text-sm text-slate-500">Monthly breakdown of appointment volume</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full bg-blue-500" />
-                    <span className="text-xs font-bold text-slate-600">Approved</span>
+                    <span>Approved</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full bg-blue-200" />
-                    <span className="text-xs font-bold text-slate-600">Pending</span>
+                    <span>Pending</span>
                   </div>
                 </div>
               </div>
               
-              <div className="h-[350px] w-full">
+              <div className="h-[260px] sm:h-[350px] w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorApproved" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -799,13 +791,13 @@ export default function AdminDashboard() {
                       dataKey="month" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
                       dy={10}
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -839,19 +831,54 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Bookings Preview */}
-            <div className="glass rounded-[32px] overflow-hidden border border-white/40 shadow-2xl mb-12">
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-xl font-display font-bold text-slate-900">Recent Bookings</h2>
-                <button onClick={() => setActiveTab('bookings')} className="text-sm font-bold text-blue-600 hover:underline">View All</button>
+            <div className="glass rounded-2xl sm:rounded-[32px] overflow-hidden border border-white/40 shadow-2xl mb-8 md:mb-12">
+              <div className="p-4 sm:p-8 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900">Recent Bookings</h2>
+                <button onClick={() => setActiveTab('bookings')} className="text-xs sm:text-sm font-bold text-blue-600 hover:underline">View All</button>
               </div>
-              <div className="overflow-x-auto">
+
+              {/* Mobile Card View */}
+              <div className="block md:hidden divide-y divide-slate-100">
+                {filteredBookings.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400">
+                    <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm font-medium">No bookings found matching your filters</p>
+                  </div>
+                ) : (
+                  filteredBookings.slice(0, 5).map((booking, i) => (
+                    <div key={booking.id || `recent-mob-${i}`} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{booking.patientName}</p>
+                          <p className="text-xs text-slate-500">{booking.patientEmail}</p>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                          booking.status === 'approved' ? 'bg-green-50 text-green-600' :
+                          booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                          booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
+                          'bg-yellow-50 text-yellow-600'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
+                        <span className="font-medium text-blue-600">{booking.service}</span>
+                        <span className="text-slate-400">{booking.date} • {booking.time}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto min-w-0">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50/50">
-                      <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Patient</th>
-                      <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service</th>
-                      <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Date</th>
-                      <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                      <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Patient</th>
+                      <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service</th>
+                      <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Date</th>
+                      <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -867,29 +894,30 @@ export default function AdminDashboard() {
                     ) : (
                       filteredBookings.slice(0, 5).map((booking, i) => (
                         <tr key={booking.id || `recent-${i}`} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-8 py-6">
-                          <p className="font-bold text-slate-900">{booking.patientName}</p>
-                          <p className="text-xs text-slate-500">{booking.patientEmail}</p>
-                        </td>
-                        <td className="px-8 py-6">
-                          <p className="text-sm text-slate-600 font-medium">{booking.service}</p>
-                        </td>
-                        <td className="px-8 py-6">
-                          <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
-                          <p className="text-xs text-slate-400">{booking.time}</p>
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            booking.status === 'approved' ? 'bg-green-50 text-green-600' :
-                            booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
-                            booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
-                            'bg-yellow-50 text-yellow-600'
-                          }`}>
-                            {booking.status}
-                          </span>
-                        </td>
-                      </tr>
-                    )))}
+                          <td className="px-6 lg:px-8 py-5">
+                            <p className="font-bold text-slate-900">{booking.patientName}</p>
+                            <p className="text-xs text-slate-500">{booking.patientEmail}</p>
+                          </td>
+                          <td className="px-6 lg:px-8 py-5">
+                            <p className="text-sm text-slate-600 font-medium">{booking.service}</p>
+                          </td>
+                          <td className="px-6 lg:px-8 py-5">
+                            <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
+                            <p className="text-xs text-slate-400">{booking.time}</p>
+                          </td>
+                          <td className="px-6 lg:px-8 py-5">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              booking.status === 'approved' ? 'bg-green-50 text-green-600' :
+                              booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                              booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
+                              'bg-yellow-50 text-yellow-600'
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -898,37 +926,123 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'bookings' && (
-          <div className="glass rounded-[32px] overflow-hidden border border-white/40 shadow-2xl">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-display font-bold text-slate-900">All Appointments</h2>
-              <div className="flex items-center space-x-3">
+          <div className="glass rounded-2xl sm:rounded-[32px] overflow-hidden border border-white/40 shadow-2xl">
+            <div className="p-4 sm:p-8 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900">All Appointments</h2>
+                <p className="text-xs text-slate-500">Manage patient bookings and schedules</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => setIsAddBookingModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs font-bold shadow-lg shadow-blue-200"
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs font-bold shadow-md shadow-blue-200"
                 >
                   <CalendarDays className="w-3.5 h-3.5" />
                   <span>New Appointment</span>
                 </button>
                 <button 
                   onClick={handleExportCSV}
-                  className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs font-bold"
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs font-bold"
                   title="Export to CSV"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Export CSV</span>
                 </button>
-                <span className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold flex items-center">{filteredBookings.length} Total</span>
+                <span className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">{filteredBookings.length} Total</span>
               </div>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile Card View */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {filteredBookings.length === 0 ? (
+                <div className="p-6 text-center text-slate-400">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm font-medium">No appointments found matching your filters</p>
+                  <button 
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setServiceFilter('all');
+                      setSearchQuery('');
+                    }}
+                    className="mt-3 text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              ) : (
+                filteredBookings.map((booking, i) => (
+                  <div key={booking.id || `booking-mob-${i}`} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{booking.patientName}</p>
+                        <p className="text-xs text-slate-500">{booking.patientEmail}</p>
+                        {booking.patientPhone && <p className="text-xs text-slate-400">{booking.patientPhone}</p>}
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                        booking.status === 'approved' ? 'bg-green-50 text-green-600' :
+                        booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                        booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
+                        'bg-yellow-50 text-yellow-600'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50/80 p-2.5 rounded-xl">
+                      <span className="font-semibold text-blue-600">{booking.service}</span>
+                      <span className="text-slate-500 font-medium">{booking.date} @ {booking.time}</span>
+                    </div>
+
+                    <div className="flex items-center justify-end space-x-2 pt-1">
+                      {processingId === booking.id ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                      ) : (
+                        <>
+                          {booking.status === 'pending' && (
+                            <>
+                              <button 
+                                onClick={() => updateStatus(booking.id, 'approved')}
+                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs font-bold rounded-lg transition-colors flex items-center space-x-1"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Approve</span>
+                              </button>
+                              <button 
+                                onClick={() => updateStatus(booking.id, 'rejected')}
+                                className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold rounded-lg transition-colors flex items-center space-x-1"
+                              >
+                                <XCircle className="w-4 h-4" />
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          )}
+                          {booking.status !== 'cancelled' && (
+                            <button 
+                              onClick={() => updateStatus(booking.id, 'cancelled')}
+                              className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center space-x-1"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Cancel</span>
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto min-w-0">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Patient Details</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Date & Time</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Patient Details</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Date & Time</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -954,67 +1068,68 @@ export default function AdminDashboard() {
                   ) : (
                     filteredBookings.map((booking, i) => (
                       <tr key={booking.id || `booking-${i}`} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-8 py-6">
-                        <p className="font-bold text-slate-900">{booking.patientName}</p>
-                        <p className="text-xs text-slate-500">{booking.patientEmail}</p>
-                        <p className="text-xs text-slate-400">{booking.patientPhone}</p>
-                      </td>
-                      <td className="px-8 py-6">
-                        <p className="text-sm text-slate-600 font-medium">{booking.service}</p>
-                      </td>
-                      <td className="px-8 py-6">
-                        <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
-                        <p className="text-xs text-slate-400">{booking.time}</p>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          booking.status === 'approved' ? 'bg-green-50 text-green-600' :
-                          booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
-                          booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
-                          'bg-yellow-50 text-yellow-600'
-                        }`}>
-                          {booking.status}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          {processingId === booking.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                          ) : (
-                            <>
-                              {booking.status === 'pending' && (
-                                <>
+                        <td className="px-6 lg:px-8 py-6">
+                          <p className="font-bold text-slate-900">{booking.patientName}</p>
+                          <p className="text-xs text-slate-500">{booking.patientEmail}</p>
+                          <p className="text-xs text-slate-400">{booking.patientPhone}</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-6">
+                          <p className="text-sm text-slate-600 font-medium">{booking.service}</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-6">
+                          <p className="text-sm text-slate-600 font-medium">{booking.date}</p>
+                          <p className="text-xs text-slate-400">{booking.time}</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            booking.status === 'approved' ? 'bg-green-50 text-green-600' :
+                            booking.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                            booking.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
+                            'bg-yellow-50 text-yellow-600'
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-6 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {processingId === booking.id ? (
+                              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                            ) : (
+                              <>
+                                {booking.status === 'pending' && (
+                                  <>
+                                    <button 
+                                      onClick={() => updateStatus(booking.id, 'approved')}
+                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                      title="Approve"
+                                    >
+                                      <CheckCircle2 className="w-5 h-5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => updateStatus(booking.id, 'rejected')}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Reject"
+                                    >
+                                      <XCircle className="w-5 h-5" />
+                                    </button>
+                                  </>
+                                )}
+                                {booking.status !== 'cancelled' && (
                                   <button 
-                                    onClick={() => updateStatus(booking.id, 'approved')}
-                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                    title="Approve"
+                                    onClick={() => updateStatus(booking.id, 'cancelled')}
+                                    className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
+                                    title="Cancel"
                                   >
-                                    <CheckCircle2 className="w-5 h-5" />
+                                    <Trash2 className="w-5 h-5" />
                                   </button>
-                                  <button 
-                                    onClick={() => updateStatus(booking.id, 'rejected')}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Reject"
-                                  >
-                                    <XCircle className="w-5 h-5" />
-                                  </button>
-                                </>
-                              )}
-                              {booking.status !== 'cancelled' && (
-                                <button 
-                                  onClick={() => updateStatus(booking.id, 'cancelled')}
-                                  className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
-                                  title="Cancel"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )))}
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1022,18 +1137,58 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'patients' && (
-          <div className="glass rounded-[32px] overflow-hidden border border-white/40 shadow-2xl">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-display font-bold text-slate-900">Patient Directory</h2>
-              <p className="text-sm text-slate-500">Unique patients from bookings</p>
+          <div className="glass rounded-2xl sm:rounded-[32px] overflow-hidden border border-white/40 shadow-2xl">
+            <div className="p-4 sm:p-8 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900">Patient Directory</h2>
+                <p className="text-xs text-slate-500">Unique patients from bookings</p>
+              </div>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile Card View */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {Array.from(new Set(filteredBookings.map(b => b.patientEmail).filter(Boolean))).length === 0 ? (
+                <div className="p-6 text-center text-slate-400">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm font-medium">No patients found matching your search</p>
+                </div>
+              ) : (
+                Array.from(new Set(filteredBookings.map(b => b.patientEmail).filter(Boolean))).map((email, i) => {
+                  const patientBookings = filteredBookings.filter(b => b.patientEmail === email);
+                  const latestBooking = patientBookings[0];
+                  return (
+                    <div key={email || `patient-mob-${i}`} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+                            {latestBooking?.patientName?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">{latestBooking?.patientName || 'Unknown Patient'}</p>
+                            <p className="text-xs text-slate-500">{email}</p>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold text-xs rounded-full shrink-0">
+                          {patientBookings.length} {patientBookings.length === 1 ? 'Booking' : 'Bookings'}
+                        </span>
+                      </div>
+                      {latestBooking?.patientPhone && (
+                        <p className="text-xs text-slate-400 pl-12">{latestBooking.patientPhone}</p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto min-w-0">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Name</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Info</th>
-                    <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Bookings</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Info</th>
+                    <th className="px-6 lg:px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Bookings</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1052,68 +1207,70 @@ export default function AdminDashboard() {
                       const latestBooking = patientBookings[0];
                       return (
                         <tr key={email || `patient-${i}`} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-8 py-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-                              {latestBooking?.patientName?.charAt(0) || '?'}
+                          <td className="px-6 lg:px-8 py-6">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                                {latestBooking?.patientName?.charAt(0) || '?'}
+                              </div>
+                              <p className="font-bold text-slate-900">{latestBooking?.patientName || 'Unknown Patient'}</p>
                             </div>
-                            <p className="font-bold text-slate-900">{latestBooking?.patientName || 'Unknown Patient'}</p>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6">
-                          <p className="text-sm text-slate-600 font-medium">{email}</p>
-                          <p className="text-xs text-slate-400">{latestBooking?.patientPhone || 'No phone provided'}</p>
-                        </td>
-                        <td className="px-8 py-6 text-right font-bold text-slate-900">
-                          {patientBookings.length}
-                        </td>
-                      </tr>
-                    );
-                  }))}
+                          </td>
+                          <td className="px-6 lg:px-8 py-6">
+                            <p className="text-sm text-slate-600 font-medium">{email}</p>
+                            <p className="text-xs text-slate-400">{latestBooking?.patientPhone || 'No phone provided'}</p>
+                          </td>
+                          <td className="px-6 lg:px-8 py-6 text-right font-bold text-slate-900">
+                            {patientBookings.length}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
+
         {activeTab === 'analytics' && (
-          <div className="space-y-12">
+          <div className="space-y-6 sm:space-y-12">
             {/* Advanced Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="glass p-8 rounded-3xl border border-white/40">
-                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-1">Approval Rate</p>
-                <p className="text-3xl font-display font-bold text-slate-900">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-8">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/40">
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Approval Rate</p>
+                <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900">
                   {bookings.length > 0 
                     ? Math.round((bookings.filter(b => b.status === 'approved').length / bookings.length) * 100) 
                     : 0}%
                 </p>
-                <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="mt-3 sm:mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-emerald-500 rounded-full" 
                     style={{ width: `${bookings.length > 0 ? (bookings.filter(b => b.status === 'approved').length / bookings.length) * 100 : 0}%` }}
                   />
                 </div>
               </div>
-              <div className="glass p-8 rounded-3xl border border-white/40">
-                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-1">Avg. Bookings / Day</p>
-                <p className="text-3xl font-display font-bold text-slate-900">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/40">
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Avg. Bookings / Day</p>
+                <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900">
                   {(bookings.length / 30).toFixed(1)}
                 </p>
-                <p className="text-xs text-slate-400 mt-2">Based on last 30 days of activity</p>
+                <p className="text-xs text-slate-400 mt-1 sm:mt-2">Based on last 30 days of activity</p>
               </div>
-              <div className="glass p-8 rounded-3xl border border-white/40">
-                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-1">New Patients (MTD)</p>
-                <p className="text-3xl font-display font-bold text-slate-900">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/40">
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">New Patients (MTD)</p>
+                <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900">
                   {Array.from(new Set(bookings.map(b => b.patientEmail).filter(Boolean))).length}
                 </p>
-                <p className="text-xs text-emerald-600 font-bold mt-2">+12% from last month</p>
+                <p className="text-xs text-emerald-600 font-bold mt-1 sm:mt-2">+12% from last month</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* Service Popularity */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Service Popularity</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Service Popularity</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 
                       layout="vertical" 
@@ -1131,8 +1288,8 @@ export default function AdminDashboard() {
                         type="category" 
                         axisLine={false} 
                         tickLine={false} 
-                        width={150}
-                        tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                        width={100}
+                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
                       />
                       <Tooltip 
                         cursor={{ fill: '#f8fafc' }}
@@ -1145,9 +1302,9 @@ export default function AdminDashboard() {
               </div>
 
               {/* Booking Status Distribution */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Status Distribution</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Status Distribution</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -1157,8 +1314,8 @@ export default function AdminDashboard() {
                           { name: 'Rejected', value: bookings.filter(b => b.status === 'rejected').length, color: '#ef4444' },
                           { name: 'Cancelled', value: bookings.filter(b => b.status === 'cancelled').length, color: '#64748b' },
                         ]}
-                        innerRadius={60}
-                        outerRadius={100}
+                        innerRadius={50}
+                        outerRadius={85}
                         paddingAngle={5}
                         dataKey="value"
                       >
@@ -1179,17 +1336,17 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* Patient Demographics */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Patient Demographics</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Patient Demographics</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={demographicsData}
-                        innerRadius={60}
-                        outerRadius={100}
+                        innerRadius={50}
+                        outerRadius={85}
                         paddingAngle={5}
                         dataKey="value"
                       >
@@ -1205,35 +1362,35 @@ export default function AdminDashboard() {
               </div>
 
               {/* Age Demographics */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Age Distribution (Est.)</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Age Distribution (Est.)</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={ageDemographicsData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                       <Tooltip 
                         cursor={{ fill: '#f8fafc' }}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
-                      <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} barSize={40} />
+                      <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} barSize={32} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* Service Trends Over Time */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Service Trends</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Service Trends</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={serviceTrendsData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
@@ -1255,14 +1412,14 @@ export default function AdminDashboard() {
               </div>
 
               {/* No-Show Rates */}
-              <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-                <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Cancellation / No-Show Rate (%)</h3>
-                <div className="h-[300px]">
+              <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Cancellation / No-Show Rate (%)</h3>
+                <div className="h-[250px] sm:h-[300px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={noShowRatesData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
@@ -1274,9 +1431,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Time of Day Distribution */}
-            <div className="glass p-8 rounded-[32px] border border-white/40 shadow-2xl">
-              <h3 className="text-xl font-display font-bold text-slate-900 mb-8">Peak Booking Times</h3>
-              <div className="h-[350px]">
+            <div className="glass p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
+              <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 mb-4 sm:mb-8">Peak Booking Times</h3>
+              <div className="h-[280px] sm:h-[350px] w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={[
                     { time: '09:00', count: bookings.filter(b => b.time?.startsWith('09')).length },
@@ -1290,21 +1447,22 @@ export default function AdminDashboard() {
                     { time: '17:00', count: bookings.filter(b => b.time?.startsWith('17')).length },
                   ]}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={4} dot={{ r: 5, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
         )}
+
         {activeTab === 'settings' && (
-          <div className="max-w-2xl">
-            <div className="glass p-8 md:p-12 rounded-[32px] border border-white/40 shadow-2xl">
+          <div className="max-w-2xl w-full">
+            <div className="glass p-5 sm:p-8 md:p-12 rounded-2xl sm:rounded-[32px] border border-white/40 shadow-2xl">
               <form onSubmit={handleUpdateSettings} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Admin Name</label>
@@ -1315,7 +1473,7 @@ export default function AdminDashboard() {
                       required
                       value={settingsForm.name}
                       onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})}
-                      className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                     />
                   </div>
                 </div>
@@ -1329,7 +1487,7 @@ export default function AdminDashboard() {
                       required
                       value={settingsForm.email}
                       onChange={(e) => setSettingsForm({...settingsForm, email: e.target.value})}
-                      className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                     />
                   </div>
                 </div>
@@ -1345,7 +1503,7 @@ export default function AdminDashboard() {
                         value={settingsForm.currentPassword}
                         onChange={(e) => setSettingsForm({...settingsForm, currentPassword: e.target.value})}
                         placeholder="••••••••"
-                        className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                       />
                     </div>
                   </div>
@@ -1363,7 +1521,7 @@ export default function AdminDashboard() {
                           value={settingsForm.newPassword}
                           onChange={(e) => setSettingsForm({...settingsForm, newPassword: e.target.value})}
                           placeholder="••••••••"
-                          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                          className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                         />
                       </div>
                     </div>
@@ -1377,7 +1535,7 @@ export default function AdminDashboard() {
                           value={settingsForm.confirmPassword}
                           onChange={(e) => setSettingsForm({...settingsForm, confirmPassword: e.target.value})}
                           placeholder="••••••••"
-                          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                          className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                         />
                       </div>
                     </div>
@@ -1395,7 +1553,7 @@ export default function AdminDashboard() {
                 <button 
                   type="submit" 
                   disabled={processingId === 'settings'}
-                  className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center space-x-2"
+                  className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center space-x-2 text-sm"
                 >
                   {processingId === 'settings' ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -1410,14 +1568,14 @@ export default function AdminDashboard() {
 
               <div className="mt-8 pt-8 border-t border-slate-200">
                 <h3 className="text-sm font-bold text-slate-900 mb-2">Password Recovery</h3>
-                <p className="text-sm text-slate-500 mb-4">
+                <p className="text-xs sm:text-sm text-slate-500 mb-4">
                   If you need to reset your password via email, you can send a recovery link to your registered email address.
                 </p>
                 <button
                   type="button"
                   onClick={handleForgotPassword}
                   disabled={processingId === 'forgot-password'}
-                  className="w-full py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 transition-all flex items-center justify-center space-x-2"
+                  className="w-full py-3.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 transition-all flex items-center justify-center space-x-2 text-sm"
                 >
                   {processingId === 'forgot-password' ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -1443,12 +1601,12 @@ export default function AdminDashboard() {
             aria-hidden="true"
           />
           <div 
-            className="relative w-full max-w-xl glass p-8 md:p-12 rounded-[40px] shadow-2xl border border-white/40 animate-in zoom-in-95 duration-300"
+            className="relative w-[calc(100vw-32px)] max-w-xl max-h-[90vh] overflow-y-auto glass p-5 sm:p-8 md:p-12 rounded-2xl sm:rounded-[40px] shadow-2xl border border-white/40 animate-in zoom-in-95 duration-300"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-display font-bold text-slate-900">Add New Booking</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl sm:text-3xl font-display font-bold text-slate-900">Add New Booking</h2>
               <button 
                 onClick={() => setIsAddBookingModalOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-all"
@@ -1457,8 +1615,8 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleAddBooking} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handleAddBooking} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Patient Name</label>
                   <input 
@@ -1467,7 +1625,7 @@ export default function AdminDashboard() {
                     value={newBookingData.patientName}
                     onChange={(e) => setNewBookingData({...newBookingData, patientName: e.target.value})}
                     placeholder="Patient's Full Name"
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1478,7 +1636,7 @@ export default function AdminDashboard() {
                     value={newBookingData.patientEmail}
                     onChange={(e) => setNewBookingData({...newBookingData, patientEmail: e.target.value})}
                     placeholder="patient@example.com"
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1489,7 +1647,7 @@ export default function AdminDashboard() {
                     value={newBookingData.patientPhone}
                     onChange={(e) => setNewBookingData({...newBookingData, patientPhone: e.target.value})}
                     placeholder="+1 (555) 000-0000"
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1497,7 +1655,7 @@ export default function AdminDashboard() {
                   <select 
                     value={newBookingData.service}
                     onChange={(e) => setNewBookingData({...newBookingData, service: e.target.value})}
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   >
                     {[
                       'Cosmetic Dentistry', 'Dental Appliances', 'Dental Hygiene', 
@@ -1513,7 +1671,7 @@ export default function AdminDashboard() {
                     required
                     value={newBookingData.date}
                     onChange={(e) => setNewBookingData({...newBookingData, date: e.target.value})}
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1521,7 +1679,7 @@ export default function AdminDashboard() {
                   <select 
                     value={newBookingData.time}
                     onChange={(e) => setNewBookingData({...newBookingData, time: e.target.value})}
-                    className="w-full px-6 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-2.5 sm:px-6 sm:py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                   >
                     {[
                       '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', 
@@ -1531,14 +1689,14 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="pt-6 flex flex-col sm:flex-row gap-4">
+              <div className="pt-4 flex flex-col sm:flex-row gap-3">
                 <button 
                   type="submit" 
                   disabled={processingId === 'add-booking'}
-                  className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center space-x-2"
+                  className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center space-x-2 text-sm"
                 >
                   {processingId === 'add-booking' ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
                       <Save className="w-5 h-5" />
@@ -1549,7 +1707,7 @@ export default function AdminDashboard() {
                 <button 
                   type="button"
                   onClick={() => setIsAddBookingModalOpen(false)}
-                  className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                  className="px-6 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all text-sm"
                 >
                   Cancel
                 </button>
