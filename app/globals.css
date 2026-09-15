@@ -18,12 +18,12 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 5rem;
-    overflow-x: hidden;
+    scroll-padding-top: 7rem;
+    overflow-x: clip;
   }
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 

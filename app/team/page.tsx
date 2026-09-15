@@ -30,6 +30,13 @@ const DENTISTS = [
     specialty: 'General & Family Dentistry',
     photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/dr-sam-flynn.webp?itok=V-MMFOI5' 
   },
+  { 
+    id: 'dalia-nasser',
+    name: 'Dr. Dalia Nasser', 
+    role: '',
+    specialty: 'Bio coming soon.',
+    photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/placeholder.png.webp?itok=hF4Kmd0Z' 
+  },
 ];
 
 const STAFF = {
@@ -100,7 +107,7 @@ export default function TeamPage() {
             </motion.h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 lg:gap-16 mb-16 sm:mb-32">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10 mb-16 sm:mb-32">
             {DENTISTS.map((dentist, index) => (
               <Link 
                 key={dentist.name}

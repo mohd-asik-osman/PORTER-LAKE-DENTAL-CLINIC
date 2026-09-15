@@ -13,13 +13,13 @@ export const Navbar = () => {
   const { currentUser, logout } = useAuth();
 
   return (
-    <>
-      <div className="bg-blue-600 text-white py-1.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs md:text-sm font-medium relative z-[60] leading-snug sm:leading-relaxed">
+    <header className="sticky top-0 left-0 right-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/60 transition-all">
+      <div className="bg-blue-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 text-center text-[11px] sm:text-xs md:text-sm font-medium relative z-[60] leading-snug sm:leading-relaxed">
         <div className="max-w-7xl mx-auto">
           Friendly reminder: We would like to advise patients that we are not affiliated with or expanding into a hygiene only practice. We are proud to continue to provide full hygiene and dental care at 5141 Nova Scotia Trunk 7. Thank you!
         </div>
       </div>
-      <nav className="sticky top-0 left-0 right-0 z-50 glass border-b border-white/20">
+      <nav className="relative z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 sm:h-16 items-center">
           <Link href="/" className="flex items-center space-x-2 shrink-0 py-1" aria-label="Porters Lake Dental Home">
@@ -75,6 +75,7 @@ export const Navbar = () => {
                     { id: 'jessica-sanford', name: 'Dr. Jessica Sanford', photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/dr-sanford_0.jpg.webp?itok=fEHqj_V6' },
                     { id: 'erhan-tatlidil', name: 'Dr. Erhan Tatlidil', photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/dr-erhan-tatlidil.jpg.webp?itok=1MfMueYL' },
                     { id: 'sam-flynn', name: 'Dr. Sam Flynn', photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/dr-sam-flynn.webp?itok=V-MMFOI5' },
+                    { id: 'dalia-nasser', name: 'Dr. Dalia Nasser', photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/placeholder.png.webp?itok=hF4Kmd0Z', desc: 'Bio coming soon.' },
                   ].map((dentist) => (
                     <Link 
                       key={dentist.name}
@@ -90,7 +91,10 @@ export const Navbar = () => {
                           referrerPolicy="no-referrer"
                         />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 group-hover/item:text-blue-600 transition-colors">{dentist.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-600 group-hover/item:text-blue-600 transition-colors">{dentist.name}</span>
+                        {dentist.desc && <span className="text-[10px] text-slate-400 font-medium">{dentist.desc}</span>}
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -223,6 +227,12 @@ export const Navbar = () => {
                 <Link href="/team/jessica-sanford" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Dr. Jessica Sanford</Link>
                 <Link href="/team/erhan-tatlidil" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Dr. Erhan Tatlidil</Link>
                 <Link href="/team/sam-flynn" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Dr. Sam Flynn</Link>
+                <Link href="/team/dalia-nasser" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">
+                  <div className="flex flex-col">
+                    <span>Dr. Dalia Nasser</span>
+                    <span className="text-[10px] text-slate-400">Bio coming soon.</span>
+                  </div>
+                </Link>
               </div>
               <Link href="/about" onClick={() => setIsOpen(false)} className="block px-3 py-3 min-h-[44px] flex items-center text-base font-semibold text-slate-700 hover:text-blue-600 rounded-xl active:bg-blue-50">About</Link>
               <Link href="/contact" onClick={() => setIsOpen(false)} className="block px-3 py-3 min-h-[44px] flex items-center text-base font-semibold text-slate-700 hover:text-blue-600 rounded-xl active:bg-blue-50">Contact</Link>
@@ -282,6 +292,6 @@ export const Navbar = () => {
         )}
       </AnimatePresence>
     </nav>
-    </>
+    </header>
   );
 };

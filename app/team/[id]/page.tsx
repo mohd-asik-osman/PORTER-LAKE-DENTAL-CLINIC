@@ -39,6 +39,11 @@ const DENTISTS_DATA: Record<string, any> = {
     education: ['Doctor of Dental Medicine (DMD) - Université de Montréal (2019)', 'General Practice Residency - Saint Francis Hospital (Connecticut)', 'Bachelor of Science - Université de Moncton'],
     memberships: ['Nova Scotia Dental Association', 'Canadian Dental Association'],
     interests: ['Root Canal Therapy', 'Oral Surgery', 'Dental Sedation', 'Dental Anxiety Management', 'Languages (English, French, Spanish, Portuguese, Arabic)', 'Hiking', 'Road-tripping']
+  },
+  'dalia-nasser': {
+    name: 'Dr. Dalia Nasser',
+    photo: 'https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/placeholder.png.webp?itok=hF4Kmd0Z',
+    bio: 'Bio coming soon.'
   }
 };
 
@@ -132,71 +137,83 @@ export default function DentistProfilePage() {
               className="lg:col-span-7 space-y-8 sm:space-y-12"
             >
               <div>
-                <motion.span 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-xs font-bold text-blue-600 uppercase tracking-[0.3em] mb-2 sm:mb-4 block"
-                >
-                  {dentist.role}
-                </motion.span>
+                {dentist.role && (
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-xs font-bold text-blue-600 uppercase tracking-[0.3em] mb-2 sm:mb-4 block"
+                  >
+                    {dentist.role}
+                  </motion.span>
+                )}
                 <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold text-slate-900 mb-2 sm:mb-4 tracking-tight">
                   {dentist.name}
                 </h1>
-                <p className="text-base sm:text-xl text-blue-600 font-medium italic mb-4 sm:mb-8">
-                  {dentist.specialty}
-                </p>
+                {dentist.specialty && (
+                  <p className="text-base sm:text-xl text-blue-600 font-medium italic mb-4 sm:mb-8">
+                    {dentist.specialty}
+                  </p>
+                )}
                 <div className="h-px w-24 bg-blue-200 mb-6 sm:mb-8" />
                 <div className="text-sm sm:text-lg text-slate-600 leading-relaxed whitespace-pre-line">
                   {dentist.bio}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+              {(dentist.education?.length > 0 || dentist.memberships?.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                  {dentist.education?.length > 0 && (
+                    <div className="space-y-4 sm:space-y-6">
+                      <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center space-x-3">
+                        <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
+                        <span>Education</span>
+                      </h3>
+                      <ul className="space-y-2.5 sm:space-y-3">
+                        {dentist.education.map((item: string) => (
+                          <li key={item} className="flex items-start space-x-3 text-xs sm:text-base text-slate-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-200 mt-2 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {dentist.memberships?.length > 0 && (
+                    <div className="space-y-4 sm:space-y-6">
+                      <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center space-x-3">
+                        <Award className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
+                        <span>Memberships</span>
+                      </h3>
+                      <ul className="space-y-2.5 sm:space-y-3">
+                        {dentist.memberships.map((item: string) => (
+                          <li key={item} className="flex items-start space-x-3 text-xs sm:text-base text-slate-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-200 mt-2 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {dentist.interests?.length > 0 && (
                 <div className="space-y-4 sm:space-y-6">
                   <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center space-x-3">
-                    <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
-                    <span>Education</span>
+                    <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
+                    <span>Areas of Interest</span>
                   </h3>
-                  <ul className="space-y-2.5 sm:space-y-3">
-                    {dentist.education.map((item: string) => (
-                      <li key={item} className="flex items-start space-x-3 text-xs sm:text-base text-slate-600">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-200 mt-2 shrink-0" />
-                        <span>{item}</span>
-                      </li>
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
+                    {dentist.interests.map((item: string) => (
+                      <span key={item} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-50 text-slate-600 text-xs sm:text-sm font-medium rounded-full border border-slate-100">
+                        {item}
+                      </span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
-
-                <div className="space-y-4 sm:space-y-6">
-                  <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center space-x-3">
-                    <Award className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
-                    <span>Memberships</span>
-                  </h3>
-                  <ul className="space-y-2.5 sm:space-y-3">
-                    {dentist.memberships.map((item: string) => (
-                      <li key={item} className="flex items-start space-x-3 text-xs sm:text-base text-slate-600">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-200 mt-2 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="space-y-4 sm:space-y-6">
-                <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 flex items-center space-x-3">
-                  <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
-                  <span>Areas of Interest</span>
-                </h3>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {dentist.interests.map((item: string) => (
-                    <span key={item} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-50 text-slate-600 text-xs sm:text-sm font-medium rounded-full border border-slate-100">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
             </motion.div>
           </div>
         </div>
