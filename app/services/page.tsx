@@ -112,8 +112,14 @@ export default function ServicesPage() {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <div className="absolute bottom-4 left-4 sm:left-6 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-lg">
-                  <service.icon className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+                <div className="absolute bottom-4 left-4 sm:left-6">
+                  <div className="relative">
+                    {/* Glowing ring micro-interaction on hover */}
+                    <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 opacity-0 group-hover:opacity-80 blur-sm transition-opacity duration-300" />
+                    <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/25 backdrop-blur-md flex items-center justify-center border border-white/40 shadow-lg group-hover:bg-blue-600 group-hover:border-blue-400 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                      <service.icon className="text-white w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300" />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="p-5 sm:p-8 flex-grow flex flex-col">

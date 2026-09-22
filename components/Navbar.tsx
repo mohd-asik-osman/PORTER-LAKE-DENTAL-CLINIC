@@ -66,12 +66,7 @@ export const Navbar = () => {
                   ))}
                 </div>
               </div>
-              <div className="relative group">
-                <Link href="/cdcp" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors whitespace-nowrap">CDCP</Link>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[280px] bg-white rounded-3xl shadow-2xl border border-slate-100 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col gap-2 z-50">
-                  <Link href="/cdcp" className="p-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors">CDCP Overview</Link>
-                </div>
-              </div>
+              <Link href="/cdcp" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors whitespace-nowrap">CDCP</Link>
               <div className="relative group">
                 <Link href="/team" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Team</Link>
                 <div className="absolute top-full left-1/2 -translate-x-1/2 w-[280px] bg-white rounded-3xl shadow-2xl border border-slate-100 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col gap-2 z-50">
@@ -222,10 +217,7 @@ export const Navbar = () => {
                 <Link href="/services/restorative-dentistry" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Restorative Dentistry</Link>
                 <Link href="/services/sedation-dentistry" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Sedation Dentistry</Link>
               </div>
-              <div className="space-y-0.5">
-                <p className="px-3 pt-3 pb-1 text-xs font-bold text-slate-400 uppercase tracking-wider">CDCP</p>
-                <Link href="/cdcp" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">CDCP Overview</Link>
-              </div>
+              <Link href="/cdcp" onClick={() => setIsOpen(false)} className="block px-3 py-3 min-h-[44px] flex items-center text-base font-semibold text-slate-700 hover:text-blue-600 rounded-xl active:bg-blue-50">CDCP</Link>
               <div className="space-y-0.5">
                 <Link href="/team" onClick={() => setIsOpen(false)} className="block px-3 py-3 min-h-[44px] flex items-center text-base font-bold text-slate-900">Team</Link>
                 <Link href="/team/jessica-sanford" onClick={() => setIsOpen(false)} className="block px-6 py-2.5 min-h-[40px] flex items-center text-sm font-medium text-slate-600 hover:text-blue-600">Dr. Jessica Sanford</Link>
