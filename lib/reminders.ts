@@ -1,14 +1,7 @@
 import { Resend } from 'resend';
 import { db, auth } from './firebase';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { 
-  parseClinicDateTime, 
-  isSuspiciousDate, 
-  formatClinicDateTime, 
-  CLINIC_TIME_ZONE, 
-  getGoogleCalendarUrl, 
-  getOutlookWebUrl 
-} from './calendar';
+import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { parseAppointmentDateTime, getGoogleCalendarUrl, getOutlookWebUrl } from './calendar';
 
 let resend: Resend | null = null;
 
@@ -29,9 +22,8 @@ export interface ReminderResult {
   service: string;
   date: string;
   time: string;
-  appointmentStartAt?: string;
   sentAt: string;
-  status: 'sent' | 'simulated' | 'error' | 'skipped_suspicious';
+  status: 'sent' | 'simulated' | 'error';
   errorMessage?: string;
 }
 
@@ -92,6 +84,7 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
       snapshot = await getDocs(collection(db, bookingsPath));
     } catch (err) {
       handleFirestoreError(err, OperationType.LIST, bookingsPath);
+      // Fallback: Check local storage if running in client context or empty
       snapshot = null;
     }
 
@@ -115,62 +108,31 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
         continue;
       }
 
-      // Skip suspicious / invalid dates (e.g. 1970-01-01)
-      if (booking.isSuspiciousDate || isSuspiciousDate(booking.date) || isSuspiciousDate(booking.appointmentStartAt)) {
-        results.push({
-          bookingId: booking.id,
-          patientName: booking.patientName || 'Unknown',
-          patientEmail: booking.patientEmail || '',
-          service: booking.service || 'Dental Appointment',
-          date: booking.date || 'Invalid',
-          time: booking.time || 'Invalid',
-          sentAt: new Date().toISOString(),
-          status: 'skipped_suspicious',
-          errorMessage: 'Skipped sending reminder due to suspicious or invalid date (needs manual review)'
-        });
+      // Calculate appointment date/time
+      const appointmentDateStr = booking.date; // e.g. "2026-09-16"
+      const appointmentTimeStr = booking.time; // e.g. "10:00 AM"
+
+      if (!appointmentDateStr || !appointmentTimeStr) {
         continue;
       }
 
-      let startDate: Date;
-
-      if (booking.appointmentStartAt && !isNaN(new Date(booking.appointmentStartAt).getTime())) {
-        startDate = new Date(booking.appointmentStartAt);
-      } else {
-        const parsed = parseClinicDateTime(booking.date, booking.time);
-        if (!parsed.isValid) {
-          results.push({
-            bookingId: booking.id,
-            patientName: booking.patientName || 'Unknown',
-            patientEmail: booking.patientEmail || '',
-            service: booking.service || 'Dental Appointment',
-            date: booking.date || 'Invalid',
-            time: booking.time || 'Invalid',
-            sentAt: new Date().toISOString(),
-            status: 'error',
-            errorMessage: `Invalid appointment date/time: ${parsed.errorMessage}`
-          });
-          continue;
-        }
-        startDate = parsed.startDate;
-      }
-
-      // Compare UTC timestamps for reminder due check
-      const reminderDueAtTime = startDate.getTime() - 24 * 60 * 60 * 1000;
+      const { startDate } = parseAppointmentDateTime(appointmentDateStr, appointmentTimeStr);
+      
+      // Calculate hours remaining until appointment
       const diffMs = startDate.getTime() - now.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
 
-      // Reminder is due if now >= reminderDueAt and now < startDate, or forced, or within ~32 hours
-      const isDue = forceAllTomorrow || (now.getTime() >= reminderDueAtTime && now.getTime() < startDate.getTime()) || (diffHours >= 0 && diffHours <= 32);
+      // Check if appointment is ~24 hours away (between 0 and 32 hours ahead, or forceAllTomorrow)
+      const is24HoursAway = forceAllTomorrow || (diffHours >= -1 && diffHours <= 32);
 
-      if (isDue) {
+      if (is24HoursAway) {
         dueRemindersCount++;
 
         const patientName = booking.patientName || 'Valued Patient';
         const patientEmail = booking.patientEmail;
         const service = booking.service || 'Dental Appointment';
-
-        const dateDisplayHalifax = formatClinicDateTime(startDate, 'MMMM d, yyyy');
-        const timeDisplayHalifax = formatClinicDateTime(startDate, 'h:mm a zzz');
+        const dateDisplay = booking.date;
+        const timeDisplay = booking.time;
 
         if (!patientEmail) {
           results.push({
@@ -178,9 +140,8 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
             patientName,
             patientEmail: '',
             service,
-            date: dateDisplayHalifax,
-            time: timeDisplayHalifax,
-            appointmentStartAt: startDate.toISOString(),
+            date: dateDisplay,
+            time: timeDisplay,
             sentAt: new Date().toISOString(),
             status: 'error',
             errorMessage: 'Patient email missing'
@@ -188,16 +149,8 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
           continue;
         }
 
-        const calendarPayload = {
-          service,
-          date: booking.date || dateDisplayHalifax,
-          time: booking.time || timeDisplayHalifax,
-          appointmentStartAt: startDate.toISOString(),
-          patientName
-        };
-
-        const googleCalUrl = getGoogleCalendarUrl(calendarPayload);
-        const outlookCalUrl = getOutlookWebUrl(calendarPayload, true);
+        const googleCalUrl = getGoogleCalendarUrl({ service, date: dateDisplay, time: timeDisplay, patientName });
+        const outlookCalUrl = getOutlookWebUrl({ service, date: dateDisplay, time: timeDisplay, patientName }, true);
 
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
@@ -220,11 +173,11 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
                   </tr>
                   <tr>
                     <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Date:</td>
-                    <td style="padding: 6px 0; color: #2563eb; font-weight: 700; text-align: right;">${dateDisplayHalifax}</td>
+                    <td style="padding: 6px 0; color: #2563eb; font-weight: 700; text-align: right;">${dateDisplay}</td>
                   </tr>
                   <tr>
                     <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Time:</td>
-                    <td style="padding: 6px 0; color: #2563eb; font-weight: 700; text-align: right;">${timeDisplayHalifax} (Halifax Time)</td>
+                    <td style="padding: 6px 0; color: #2563eb; font-weight: 700; text-align: right;">${timeDisplay}</td>
                   </tr>
                   <tr>
                     <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Location:</td>
@@ -263,7 +216,7 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
             await client.emails.send({
               from: 'Porters Lake Dental <noreply@porterslakedental.com>',
               to: [patientEmail],
-              subject: `Reminder: Your Dental Appointment Tomorrow at ${timeDisplayHalifax}`,
+              subject: `Reminder: Your Dental Appointment Tomorrow at ${timeDisplay}`,
               html: emailHtml
             });
             emailStatus = 'sent';
@@ -272,10 +225,10 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
             emailStatus = 'simulated';
           }
         } else {
-          console.log(`[SIMULATED 24H REMINDER EMAIL] Sent to ${patientEmail} for ${service} on ${dateDisplayHalifax} at ${timeDisplayHalifax}`);
+          console.log(`[SIMULATED 24H REMINDER EMAIL] Sent to ${patientEmail} for ${service} on ${dateDisplay} at ${timeDisplay}`);
         }
 
-        // Update booking in Firestore
+        // Update booking in Firestore to mark reminderSent = true
         try {
           await updateDoc(doc(db, 'bookings', booking.id), {
             reminderSent: true,
@@ -291,9 +244,8 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
           patientName,
           patientEmail,
           service,
-          date: dateDisplayHalifax,
-          time: timeDisplayHalifax,
-          appointmentStartAt: startDate.toISOString(),
+          date: dateDisplay,
+          time: timeDisplay,
           sentAt: new Date().toISOString(),
           status: emailStatus
         });
