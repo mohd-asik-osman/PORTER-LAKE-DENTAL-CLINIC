@@ -13,7 +13,6 @@ import { Footer } from '@/components/Footer';
 import { AddToCalendar } from '@/components/AddToCalendar';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { parseClinicDateTime, CLINIC_TIME_ZONE, formatClinicDateTime } from '@/lib/calendar';
 
 enum OperationType {
   CREATE = 'create',
@@ -144,19 +143,6 @@ export default function BookingPage() {
     setIsLoading(true);
     
     try {
-      if (!selectedDate || !selectedTime) {
-        throw new Error('Please select a valid date and time.');
-      }
-
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const parsed = parseClinicDateTime(dateStr, selectedTime);
-
-      if (!parsed.isValid) {
-        alert(parsed.errorMessage || 'Invalid date or time selected.');
-        setIsLoading(false);
-        return;
-      }
-
       const bookingId = crypto.randomUUID();
       const newBooking = {
         id: bookingId,
@@ -164,13 +150,8 @@ export default function BookingPage() {
         patientEmail: patientDetails.email,
         patientPhone: patientDetails.phone,
         service: selectedService,
-        date: parsed.dateStr,
-        time: parsed.timeStr,
-        appointmentStartAt: parsed.appointmentStartAt,
-        appointmentEndAt: parsed.appointmentEndAt,
-        reminderDueAt: parsed.reminderDueAt,
-        timeZone: CLINIC_TIME_ZONE,
-        isSuspiciousDate: false,
+        date: format(selectedDate!, 'yyyy-MM-dd'),
+        time: selectedTime,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
@@ -195,9 +176,8 @@ export default function BookingPage() {
           email: patientDetails.email,
           userName: patientDetails.name,
           service: selectedService,
-          date: parsed.dateFormatted,
-          time: parsed.timeFormatted,
-          appointmentStartAt: parsed.appointmentStartAt
+          date: format(selectedDate!, 'MMMM do, yyyy'),
+          time: selectedTime
         })
       }).catch(err => console.error('Failed to send confirmation email:', err));
 
@@ -359,15 +339,10 @@ export default function BookingPage() {
 
                 {/* Time Slots */}
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4 sm:mb-6">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                      <span>Available Slots</span>
-                    </h3>
-                    <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg inline-block w-fit">
-                      All appointment times are in Halifax time
-                    </span>
-                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 sm:mb-6 flex items-center space-x-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Available Slots</span>
+                  </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
                     {TIME_SLOTS.map(time => (
                       <button
