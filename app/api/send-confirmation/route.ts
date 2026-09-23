@@ -1,6 +1,11 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
-import { getGoogleCalendarUrl, getOutlookWebUrl } from '@/lib/calendar';
+import { 
+  getGoogleCalendarUrl, 
+  getOutlookWebUrl, 
+  parseClinicDateTime, 
+  formatClinicDateTime 
+} from '@/lib/calendar';
 
 let resend: Resend | null = null;
 
@@ -18,19 +23,44 @@ function getResend() {
 
 export async function POST(req: Request) {
   try {
-    const { email, userName, service, date, time } = await req.json();
+    const { email, userName, service, date, time, appointmentStartAt } = await req.json();
 
-    if (!email || !userName || !service || !date || !time) {
+    if (!email || !userName || !service || (!date && !appointmentStartAt) || (!time && !appointmentStartAt)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const googleCalendarUrl = getGoogleCalendarUrl({ service, date, time, patientName: userName });
-    const outlookCalendarUrl = getOutlookWebUrl({ service, date, time, patientName: userName }, true);
+    let startDateIso = appointmentStartAt;
+    let formattedDateDisplay = date;
+    let formattedTimeDisplay = time;
+
+    if (startDateIso && !isNaN(new Date(startDateIso).getTime())) {
+      const startDate = new Date(startDateIso);
+      formattedDateDisplay = formatClinicDateTime(startDate, 'MMMM d, yyyy');
+      formattedTimeDisplay = formatClinicDateTime(startDate, 'h:mm a');
+    } else {
+      const parsed = parseClinicDateTime(date, time);
+      if (parsed.isValid) {
+        startDateIso = parsed.appointmentStartAt;
+        formattedDateDisplay = parsed.dateFormatted;
+        formattedTimeDisplay = parsed.timeFormatted;
+      }
+    }
+
+    const calendarPayload = {
+      service,
+      date: formattedDateDisplay || date,
+      time: formattedTimeDisplay || time,
+      appointmentStartAt: startDateIso,
+      patientName: userName
+    };
+
+    const googleCalendarUrl = getGoogleCalendarUrl(calendarPayload);
+    const outlookCalendarUrl = getOutlookWebUrl(calendarPayload, true);
 
     const client = getResend();
     
     if (!client) {
-      console.log(`[MOCK EMAIL] To: ${email}, Subject: Booking Confirmation - Porters Lake Dental`);
+      console.log(`[MOCK CONFIRMATION EMAIL] To: ${email}, Subject: Booking Confirmation - Porters Lake Dental`);
       return NextResponse.json({ data: { id: 'mock_email_id' } });
     }
 
@@ -52,11 +82,11 @@ export async function POST(req: Request) {
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Date:</td>
-                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; text-align: right;">${date}</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; text-align: right;">${formattedDateDisplay}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Time:</td>
-                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; text-align: right;">${time}</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; text-align: right;">${formattedTimeDisplay} (Halifax Time)</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Location:</td>

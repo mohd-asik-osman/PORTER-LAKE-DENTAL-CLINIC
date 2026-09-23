@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { CalendarPlus, Download, Check, ExternalLink, Calendar as CalendarIcon } from 'lucide-react';
 import { 
   AppointmentCalendarData, 
+  buildAppointmentDetails,
+  formatClinicDateTime,
+  isSuspiciousDate,
   getGoogleCalendarUrl, 
   getOutlookWebUrl, 
   downloadIcsFile 
@@ -15,13 +18,46 @@ interface AddToCalendarProps {
   variant?: 'compact' | 'full';
 }
 
+function getCalendarOptions(appointment: AppointmentCalendarData) {
+  // A malformed legacy booking must not prevent the rest of the admin list rendering.
+  // Prefer canonical timestamps, just as the calendar exporters do.
+  try {
+    const details = buildAppointmentDetails(appointment);
+    if (
+      isSuspiciousDate(details.startDate) ||
+      isSuspiciousDate(details.endDate) ||
+      details.endDate.getTime() <= details.startDate.getTime()
+    ) {
+      return null;
+    }
+
+    return {
+      googleUrl: getGoogleCalendarUrl(appointment),
+      outlook365Url: getOutlookWebUrl(appointment, true),
+      outlookLiveUrl: getOutlookWebUrl(appointment, false),
+      textToCopy: `Dental Appointment: ${appointment.service}\nDate: ${formatClinicDateTime(details.startDate, 'MMMM d, yyyy')}\nTime: ${formatClinicDateTime(details.startDate, 'h:mm a zzz')} (Halifax Time)\nLocation: ${details.location}\nClinic: Porters Lake Dental (902-827-4746)`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function AddToCalendar({ appointment, className = '', variant = 'full' }: AddToCalendarProps) {
   const [copied, setCopied] = useState(false);
   const [showOutlookMenu, setShowOutlookMenu] = useState(false);
 
-  const googleUrl = getGoogleCalendarUrl(appointment);
-  const outlook365Url = getOutlookWebUrl(appointment, true);
-  const outlookLiveUrl = getOutlookWebUrl(appointment, false);
+  const calendarOptions = getCalendarOptions(appointment);
+
+  if (!calendarOptions) {
+    return (
+      <div className={`rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 ${className}`}>
+        <p className="font-semibold">Calendar unavailable</p>
+        <p className="mt-1">Check the appointment date and time before exporting.</p>
+      </div>
+    );
+  }
+
+  const { googleUrl, outlook365Url, outlookLiveUrl, textToCopy } = calendarOptions;
 
   const handleDownloadIcs = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -29,12 +65,6 @@ export function AddToCalendar({ appointment, className = '', variant = 'full' }:
   };
 
   const handleCopyDetails = async () => {
-    const formattedDate = typeof appointment.date === 'string' 
-      ? appointment.date 
-      : appointment.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    
-    const textToCopy = `Dental Appointment: ${appointment.service}\nDate: ${formattedDate}\nTime: ${appointment.time}\nLocation: 5141 Nova Scotia Trunk 7, Porters Lake, NS B3E 1M1\nClinic: Porters Lake Dental (902-827-4746)`;
-    
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
