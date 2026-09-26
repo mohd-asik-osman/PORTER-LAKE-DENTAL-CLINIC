@@ -215,7 +215,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/cron/send-reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force })
+        body: JSON.stringify({ force, bookings })
       });
       const data = await res.json();
       if (res.ok && data.summary) {

@@ -37,8 +37,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const force = body.force === true;
+    const bookings = Array.isArray(body.bookings) ? body.bookings : undefined;
 
-    const summary = await processAppointmentReminders(force);
+    const summary = await processAppointmentReminders(force, bookings);
 
     return NextResponse.json({
       message: '24-hour appointment reminder job triggered successfully',

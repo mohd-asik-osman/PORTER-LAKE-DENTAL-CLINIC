@@ -51,8 +51,7 @@ export function AddToCalendar({ appointment, className = '', variant = 'full' }:
   if (!calendarOptions) {
     return (
       <div className={`rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 ${className}`}>
-        <p className="font-semibold">Calendar unavailable</p>
-        <p className="mt-1">Check the appointment date and time before exporting.</p>
+        <p className="font-semibold">Calendar unavailable — appointment date/time needs review</p>
       </div>
     );
   }

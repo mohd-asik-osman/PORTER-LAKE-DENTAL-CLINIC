@@ -78,7 +78,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   console.error('Firestore Error in Reminders Job: ', JSON.stringify(errInfo));
 }
 
-export async function processAppointmentReminders(forceAllTomorrow = false): Promise<ProcessRemindersSummary> {
+export async function processAppointmentReminders(forceAllTomorrow = false, providedBookings?: any[]): Promise<ProcessRemindersSummary> {
   const now = new Date();
   const results: ReminderResult[] = [];
   let totalChecked = 0;
@@ -86,20 +86,24 @@ export async function processAppointmentReminders(forceAllTomorrow = false): Pro
   let sentCount = 0;
 
   try {
-    const bookingsPath = 'bookings';
-    let snapshot;
-    try {
-      snapshot = await getDocs(collection(db, bookingsPath));
-    } catch (err) {
-      handleFirestoreError(err, OperationType.LIST, bookingsPath);
-      snapshot = null;
-    }
+    let bookingsList: any[] = [];
+    if (providedBookings && Array.isArray(providedBookings) && providedBookings.length > 0) {
+      bookingsList = providedBookings;
+    } else {
+      const bookingsPath = 'bookings';
+      let snapshot;
+      try {
+        snapshot = await getDocs(collection(db, bookingsPath));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.LIST, bookingsPath);
+        snapshot = null;
+      }
 
-    const bookingsList: any[] = [];
-    if (snapshot && !snapshot.empty) {
-      snapshot.forEach(docSnap => {
-        bookingsList.push({ id: docSnap.id, ...docSnap.data() });
-      });
+      if (snapshot && !snapshot.empty) {
+        snapshot.forEach(docSnap => {
+          bookingsList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      }
     }
 
     totalChecked = bookingsList.length;

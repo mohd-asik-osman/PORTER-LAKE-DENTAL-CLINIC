@@ -1,34 +1,100 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Default deny all unmatched documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    // Designated super-admin emails verified from auth token
+    function isSuperAdminEmail() {
       return isAuthenticated() && 
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-         request.auth.token.email == "asikosman010@gmail.com" ||
+        (request.auth.token.email == "asikosman010@gmail.com" ||
          request.auth.token.email == "admin@porterslakedental.com");
     }
 
-    function isValidBooking(data) {
-      return data.patientName is string && 
-             data.patientEmail is string && 
-             (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected' || data.status == 'cancelled');
+    // Check if authenticated user is recognized as an admin:
+    // Either their verified token matches a trusted admin email,
+    // OR they have an existing user document with role == 'admin'.
+    function isAdmin() {
+      return isAuthenticated() && 
+        (isSuperAdminEmail() || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
+    // Required booking fields validation
+    function isValidBookingPayload(data) {
+      return data.patientName is string && data.patientName.size() > 0 && data.patientName.size() <= 150 &&
+             data.patientEmail is string && data.patientEmail.size() > 0 && data.patientEmail.size() <= 150 &&
+             data.patientPhone is string && data.patientPhone.size() > 0 && data.patientPhone.size() <= 50 &&
+             data.service is string && data.service.size() > 0 && data.service.size() <= 150 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 30 &&
+             data.time is string && data.time.size() > 0 && data.time.size() <= 30;
+    }
+
+    // Valid user profile schema validation
+    function isValidUserPayload(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+             data.role in ['admin', 'user'];
+    }
+
+    // User collection: role elevation protection
     match /users/{uid} {
+      // Users can only read their own profile; admins can read any profile
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
-      allow create, update: if (isAuthenticated() && request.auth.uid == uid) || isAdmin();
+      
+      // Create: Users can create their own profile, but CANNOT grant themselves 'admin' role unless they match a trusted super-admin email.
+      // Existing admins can create any user profile.
+      allow create: if isValidUserPayload(request.resource.data) && (
+        isAdmin() ||
+        (isAuthenticated() && request.auth.uid == uid && (
+          request.resource.data.role == 'user' ||
+          (request.resource.data.role == 'admin' && isSuperAdminEmail())
+        ))
+      );
+      
+      // Update: Users can update their own details, but their role is immutable (cannot elevate to admin).
+      // Only admins can alter user roles or edit other users.
+      allow update: if isValidUserPayload(request.resource.data) && (
+        isAdmin() ||
+        (isAuthenticated() && request.auth.uid == uid && request.resource.data.role == resource.data.role)
+      );
+      
+      // Only admins can delete profiles
       allow delete: if isAdmin();
     }
 
+    // Bookings collection: zero public reads/updates
     match /bookings/{bookingId} {
-      allow read: if true;
-      allow create: if isValidBooking(request.resource.data);
-      allow update: if true;
+      // ONLY authenticated admins may list or read bookings.
+      // Unconditional public reads are completely removed.
+      allow read: if isAdmin();
+
+      // Create:
+      // Visitors may submit an appointment request ONLY with status 'pending' and valid schema.
+      // Authenticated admins may create appointments directly with status 'pending' or 'approved'.
+      allow create: if isValidBookingPayload(request.resource.data) && (
+        (request.resource.data.status == 'pending') ||
+        (isAdmin() && (request.resource.data.status == 'approved' || request.resource.data.status == 'pending'))
+      );
+
+      // Update:
+      // ONLY authenticated admins may update bookings (approving, rejecting, cancelling, or editing).
+      // Unconditional public updates are completely removed.
+      allow update: if isAdmin() && 
+        request.resource.data.status in ['pending', 'approved', 'rejected', 'cancelled'] &&
+        isValidBookingPayload(request.resource.data);
+
+      // Delete:
+      // ONLY authenticated admins may delete bookings.
       allow delete: if isAdmin();
     }
   }
