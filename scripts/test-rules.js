@@ -226,7 +226,9 @@ function runContractVerification() {
     isAuthenticated() { return this.auth !== null && this.auth !== undefined; }
     isSuperAdminEmail() {
       return this.isAuthenticated() && this.auth.token &&
-        (this.auth.token.email === 'asikosman010@gmail.com' || this.auth.token.email === 'admin@porterslakedental.com');
+        (this.auth.token.email === 'asikosman010@gmail.com' || 
+         this.auth.token.email === 'admin@porterslakedental.com' ||
+         this.auth.token.email === 'dentist@bellaliant.com');
     }
     isAdmin() {
       if (!this.isAuthenticated()) return false;

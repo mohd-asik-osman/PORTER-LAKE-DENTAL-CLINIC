@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { BackToTop } from '@/components/BackToTop';
+import { SITE_URL, isIndexable, dentistJsonLd } from '@/lib/seo';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -14,10 +15,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-display',
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.APP_URL ||
-  'https://porterslakedental.com';
+const indexable = isIndexable();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -47,9 +45,6 @@ export const metadata: Metadata = {
     address: true,
     telephone: true,
   },
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     title: 'Porters Lake Dental Centre | Dentist in Porters Lake & Family Dentistry',
     description:
@@ -60,7 +55,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/dental_pattern_v2.png',
+        url: `${SITE_URL}/og-image.jpg`,
         width: 1200,
         height: 630,
         alt: 'Porters Lake Dental Centre - Modern Family Dental Care in Porters Lake, NS',
@@ -72,80 +67,39 @@ export const metadata: Metadata = {
     title: 'Porters Lake Dental Centre | Dentist in Porters Lake, NS',
     description:
       'Compassionate family dentistry in Porters Lake, Nova Scotia. Accepting new patients, CDCP, and emergency dental care.',
-    images: ['/dental_pattern_v2.png'],
+    images: [`${SITE_URL}/og-image.jpg`],
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
+  robots: indexable
+    ? {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-video-preview': -1,
+          'max-image-preview': 'large',
+          'max-snippet': -1,
+        },
+      }
+    : {
+        index: false,
+        follow: false,
+        nocache: true,
+        googleBot: {
+          index: false,
+          follow: false,
+          noimageindex: true,
+        },
+      },
 };
 
-const jsonLdSchema = {
-  '@context': 'https://schema.org',
-  '@type': ['Dentist', 'LocalBusiness', 'MedicalOrganization'],
-  '@id': `${SITE_URL}/#dentist`,
-  name: 'Porters Lake Dental Centre',
-  alternateName: 'Porters Lake Dental',
-  url: SITE_URL,
-  telephone: '+1-902-827-4746',
-  email: 'info@porterslakedental.com',
-  priceRange: '$$',
-  currenciesAccepted: 'CAD',
-  paymentAccepted: 'Cash, Credit Card, Debit, Direct Insurance Billing, CDCP',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: '5220 Highway 7, Unit 4',
-    addressLocality: 'Porters Lake',
-    addressRegion: 'NS',
-    postalCode: 'B3E 1J8',
-    addressCountry: 'CA',
-  },
-  geo: {
-    '@type': 'GeoCoordinates',
-    latitude: 44.7397,
-    longitude: -63.3005,
-  },
-  areaServed: [
-    { '@type': 'City', name: 'Porters Lake' },
-    { '@type': 'City', name: 'Lake Echo' },
-    { '@type': 'City', name: 'Chezzetcook' },
-    { '@type': 'City', name: 'Musquodoboit Harbour' },
-    { '@type': 'City', name: 'Eastern Shore' },
-    { '@type': 'AdministrativeArea', name: 'Halifax Regional Municipality' },
-  ],
-  openingHoursSpecification: [
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-      opens: '08:00',
-      closes: '17:00',
-    },
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Friday'],
-      opens: '08:00',
-      closes: '14:00',
-    },
-  ],
-  medicalSpecialty: 'Dentistry',
-  isAcceptingNewPatients: true,
-  hasMap: 'https://maps.google.com/?q=Porters+Lake+Dental+Centre',
-};
-
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(dentistJsonLd) }}
         />
       </head>
       <body suppressHydrationWarning className="font-sans antialiased bg-slate-50 text-slate-900">
@@ -157,4 +111,3 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     </html>
   );
 }
-

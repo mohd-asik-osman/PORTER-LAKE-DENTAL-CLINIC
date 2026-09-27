@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 import { 
   Calendar, 
   Phone, 
+  Mail,
   ChevronRight, Star, Shield, Zap, Heart,
   CheckCircle2,
   ShieldCheck, Users, Activity
@@ -352,7 +353,7 @@ export default function LandingPage() {
           <p className="text-slate-400 text-sm sm:text-base mb-6 sm:mb-8 leading-relaxed">
             Contact us today to book your appointment or learn more about our services. We look forward to welcoming you to our practice!
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 flex-wrap">
             <Link 
               href="/booking" 
               className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-xl shadow-blue-900/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
@@ -362,10 +363,17 @@ export default function LandingPage() {
             </Link>
             <a 
               href="tel:9028274746" 
-              className="w-full sm:w-auto min-h-[48px] px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl border-2 border-slate-700 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
+              className="w-full sm:w-auto min-h-[48px] px-7 sm:px-8 py-3.5 sm:py-4 rounded-2xl border-2 border-slate-700 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
             >
               <Phone className="w-5 h-5 shrink-0" />
               <span>(902) 827-4746</span>
+            </a>
+            <a 
+              href="mailto:dentist@bellaliant.com" 
+              className="w-full sm:w-auto min-h-[48px] px-7 sm:px-8 py-3.5 sm:py-4 rounded-2xl border-2 border-slate-700 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
+            >
+              <Mail className="w-5 h-5 shrink-0 text-blue-400" />
+              <span>dentist@bellaliant.com</span>
             </a>
           </div>
         </div>

@@ -248,13 +248,13 @@ export async function processAppointmentReminders(forceAllTomorrow = false, prov
                 <ul style="color: #64748b; font-size: 13px; margin: 0; padding-left: 18px; line-height: 1.5;">
                   <li>Please arrive 10 minutes prior to your scheduled time.</li>
                   <li>Bring your government ID and dental insurance card.</li>
-                  <li>Need to reschedule? Call us at (902) 827-4746.</li>
+                  <li>Need to reschedule? Call us at (902) 827-4746 or email dentist@bellaliant.com.</li>
                 </ul>
               </div>
             </div>
 
             <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-              <p style="color: #94a3b8; font-size: 12px; margin: 0;">Porters Lake Dental Clinic &bull; Phone: (902) 827-4746 &bull; Email: dentist@bellaliant.com</p>
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">Porters Lake Dental Clinic &bull; Phone: (902) 827-4746 &bull; Email: <a href="mailto:dentist@bellaliant.com" style="color: #2563eb; text-decoration: underline;">dentist@bellaliant.com</a></p>
             </div>
           </div>
         `;
@@ -266,6 +266,7 @@ export async function processAppointmentReminders(forceAllTomorrow = false, prov
           try {
             await client.emails.send({
               from: 'Porters Lake Dental <noreply@porterslakedental.com>',
+              reply_to: 'dentist@bellaliant.com',
               to: [patientEmail],
               subject: `Reminder: Your Dental Appointment Tomorrow at ${timeDisplayHalifax}`,
               html: emailHtml

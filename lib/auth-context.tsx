@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: user.uid,
               name: user.displayName || 'User',
               email: user.email || '',
-              role: (user.email === 'asikosman010@gmail.com' || user.email === 'admin@porterslakedental.com') ? 'admin' : 'user'
+              role: (user.email === 'asikosman010@gmail.com' || user.email === 'admin@porterslakedental.com' || user.email === 'dentist@bellaliant.com') ? 'admin' : 'user'
             };
             await setDoc(doc(db, 'users', user.uid), newProfile);
             setCurrentUser(newProfile);

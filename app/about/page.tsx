@@ -1,11 +1,17 @@
-'use client';
-
-import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, FileText, CreditCard, Calendar, ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { buildMetadata } from '@/lib/seo';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'About Our Clinic | Porters Lake Dental Centre',
+  description:
+    'Learn about Porters Lake Dental Centre in Nova Scotia. Modern digital dental technology, direct insurance billing, comfortable care, and a warm family atmosphere.',
+  pathname: '/about',
+});
 
 export default function AboutPage() {
   return (
@@ -34,7 +40,7 @@ export default function AboutPage() {
           <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full overflow-hidden rounded-2xl sm:rounded-[32px] shadow-xl sm:shadow-2xl">
             <Image 
               src="https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/reflection.jpg.webp?itok=I2uM1Noq" 
-              alt="Clinic Reflection" 
+              alt="Porters Lake Dental Centre modern clinic exterior in Porters Lake, Nova Scotia" 
               fill
               sizes="100vw"
               className="object-cover"
@@ -73,7 +79,7 @@ export default function AboutPage() {
                 We offer the little extras that mean a lot. With TVs in the waiting area and the operatories, lots of free parking in our private lot, and a casual, family-oriented approach to care, your visit is always enjoyable.
               </p>
               <p className="text-base sm:text-lg leading-relaxed">
-                With direct billing to your private dental insurance company, you never have to worry about submitting receipts or completing any paper work. We take care of it, so it’s one less thing for you to worry about.
+                With direct billing to your private dental insurance company, you never have to worry about submitting receipts or completing any paperwork. We take care of it, so it’s one less thing for you to worry about.
               </p>
             </div>
 
@@ -85,10 +91,10 @@ export default function AboutPage() {
               </h3>
               <div className="flex flex-wrap gap-4 sm:gap-6 items-center">
                 {[
-                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/visa.png.webp?itok=4JzrFw-0", alt: "Visa" },
-                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/e-transfer.png.webp?itok=c-7pWuTH", alt: "E-transfer" },
-                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/debit.png.webp?itok=r5HQ7rUR", alt: "Debit" },
-                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/mastercard.png.webp?itok=TiRfyTeZ", alt: "Mastercard" }
+                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/visa.png.webp?itok=4JzrFw-0", alt: "Visa payment accepted at Porters Lake Dental" },
+                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/e-transfer.png.webp?itok=c-7pWuTH", alt: "Interac e-Transfer payment accepted" },
+                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/debit.png.webp?itok=r5HQ7rUR", alt: "Debit card payment accepted" },
+                  { src: "https://www.porterslakedental.com/sites/www.porterslakedental.com/files/styles/webp/public/images/mastercard.png.webp?itok=TiRfyTeZ", alt: "Mastercard payment accepted" }
                 ].map((payment, idx) => (
                   <div key={idx} className="relative h-8 sm:h-10 w-14 sm:w-16 grayscale hover:grayscale-0 transition-all">
                     <Image 

@@ -66,6 +66,7 @@ export async function POST(req: Request) {
 
     const { data, error } = await client.emails.send({
       from: 'Porters Lake Dental <onboarding@resend.dev>',
+      reply_to: 'dentist@bellaliant.com',
       to: [email],
       subject: 'Booking Confirmation - Porters Lake Dental',
       html: `
@@ -101,10 +102,11 @@ export async function POST(req: Request) {
             <a href="${outlookCalendarUrl}" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; font-weight: 700; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; margin: 4px 4px;">+ Outlook</a>
           </div>
           
-          <p style="color: #475569; font-size: 16px; line-height: 1.5;">We look forward to seeing you! If you need to reschedule, please visit your dashboard or call us at (902) 827-4746.</p>
+          <p style="color: #475569; font-size: 16px; line-height: 1.5;">We look forward to seeing you! If you need to reschedule or have questions, please visit your dashboard, call us at (902) 827-4746, or email us at <a href="mailto:dentist@bellaliant.com" style="color: #2563eb; text-decoration: underline;">dentist@bellaliant.com</a>.</p>
           
           <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="color: #94a3b8; font-size: 14px;">&copy; 2026 Porters Lake Dental. All rights reserved.</p>
+            <p style="color: #64748b; font-size: 13px; margin: 0 0 6px 0;">Porters Lake Dental &bull; 5141 Nova Scotia Trunk 7 &bull; Email: <a href="mailto:dentist@bellaliant.com" style="color: #2563eb;">dentist@bellaliant.com</a></p>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0;">&copy; 2026 Porters Lake Dental. All rights reserved.</p>
           </div>
         </div>
       `,

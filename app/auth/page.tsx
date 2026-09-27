@@ -50,7 +50,7 @@ export default function AuthPage() {
     setError('');
     setSuccess('');
 
-    const isAdminEmail = formData.email === 'admin@porterslakedental.com' || formData.email === 'asikosman010@gmail.com';
+    const isAdminEmail = formData.email === 'admin@porterslakedental.com' || formData.email === 'asikosman010@gmail.com' || formData.email === 'dentist@bellaliant.com';
 
     try {
       // 1. Attempt Sign In

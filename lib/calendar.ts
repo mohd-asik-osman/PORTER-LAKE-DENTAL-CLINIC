@@ -328,7 +328,7 @@ export function downloadIcsFile(data: AppointmentCalendarData) {
     `DTSTART:${startStr}`,
     `DTEND:${endStr}`,
     `STATUS:CONFIRMED`,
-    `UID:appointment-${details.startDate.getTime()}@porterslakedental.com`,
+    `UID:appointment-${details.startDate.getTime()}@bellaliant.com`,
     'END:VEVENT',
     'END:VCALENDAR'
   ].join('\r\n');

@@ -16,7 +16,8 @@ service cloud.firestore {
     function isSuperAdminEmail() {
       return isAuthenticated() && 
         (request.auth.token.email == "asikosman010@gmail.com" ||
-         request.auth.token.email == "admin@porterslakedental.com");
+         request.auth.token.email == "admin@porterslakedental.com" ||
+         request.auth.token.email == "dentist@bellaliant.com");
     }
 
     // Check if authenticated user is recognized as an admin:

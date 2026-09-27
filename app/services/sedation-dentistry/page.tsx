@@ -1,4 +1,13 @@
+import type { Metadata } from 'next';
 import { ServiceTemplate } from '@/components/ServiceTemplate';
+import { buildMetadata, SERVICES_META } from '@/lib/seo';
+
+export const metadata: Metadata = buildMetadata({
+  title: SERVICES_META['sedation-dentistry'].title,
+  description: SERVICES_META['sedation-dentistry'].description,
+  pathname: '/services/sedation-dentistry',
+  image: SERVICES_META['sedation-dentistry'].image,
+});
 
 export default function SedationDentistry() {
   return (

@@ -96,7 +96,9 @@ export const Footer = () => {
                 </div>
                 <div>
                   <p className="text-white font-bold text-xs sm:text-sm mb-0.5 sm:mb-1">Phone Number</p>
-                  <p className="text-slate-400 text-xs sm:text-sm">(902) 827-4746</p>
+                  <a href="tel:9028274746" className="text-slate-400 hover:text-blue-400 transition-colors text-xs sm:text-sm">
+                    (902) 827-4746
+                  </a>
                 </div>
               </li>
               <li className="flex gap-3 sm:gap-4">
@@ -105,7 +107,9 @@ export const Footer = () => {
                 </div>
                 <div>
                   <p className="text-white font-bold text-xs sm:text-sm mb-0.5 sm:mb-1">Email Address</p>
-                  <p className="text-slate-400 text-xs sm:text-sm">hello@porterslakedental.com</p>
+                  <a href="mailto:dentist@bellaliant.com" className="text-slate-400 hover:text-blue-400 transition-colors text-xs sm:text-sm break-all">
+                    dentist@bellaliant.com
+                  </a>
                 </div>
               </li>
             </ul>

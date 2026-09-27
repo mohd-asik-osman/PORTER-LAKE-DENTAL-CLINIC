@@ -1,6 +1,15 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { buildMetadata } from '@/lib/seo';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Canadian Dental Care Plan (CDCP) | Porters Lake Dental',
+  description:
+    'Porters Lake Dental Centre proudly accepts the Canadian Dental Care Plan (CDCP). Learn who qualifies, what dental services are covered, and how to apply in Nova Scotia.',
+  pathname: '/cdcp',
+});
 
 export default function CDCPPage() {
   return (

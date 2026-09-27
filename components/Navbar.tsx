@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, LogOut, LayoutDashboard, Facebook, Instagram, MapPin, Phone, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Facebook, Instagram, MapPin, Phone, Calendar, Mail } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/lib/auth-context';
 
@@ -112,6 +112,14 @@ export const Navbar = () => {
               </a>
               
               <div className="hidden lg:flex items-center space-x-3">
+                <a 
+                  href="mailto:dentist@bellaliant.com" 
+                  className="text-slate-400 hover:text-blue-600 transition-colors"
+                  aria-label="Email Us"
+                  title="dentist@bellaliant.com"
+                >
+                  <Mail className="w-5 h-5" />
+                </a>
                 <a 
                   href="https://www.facebook.com/porterslakedental" 
                   target="_blank" 
@@ -239,6 +247,14 @@ export const Navbar = () => {
               >
                 <Phone className="w-5 h-5 shrink-0" />
                 <span>(902) 827-4746</span>
+              </a>
+
+              <a 
+                href="mailto:dentist@bellaliant.com" 
+                className="flex items-center space-x-3 px-3 py-2.5 min-h-[48px] text-slate-700 hover:text-blue-600 font-medium text-sm break-all"
+              >
+                <Mail className="w-5 h-5 shrink-0 text-blue-500" />
+                <span>dentist@bellaliant.com</span>
               </a>
               
               <div className="flex items-center space-x-4 px-3 py-3 border-t border-slate-100">
