@@ -32,6 +32,341 @@ export interface ParsedClinicAppointment {
   timeStr: string;            // e.g. "04:00 PM" or "16:00"
 }
 
+export interface ClinicHours {
+  isOpen: boolean;
+  openHour: number;   // 24-hr (e.g. 8)
+  openMinute: number; // (e.g. 0)
+  closeHour: number;  // 24-hr (e.g. 18 for Mon-Wed, 17 for Thu, 15 for Fri)
+  closeMinute: number;// (e.g. 0)
+  hoursDisplay: string;
+  reason?: string;
+}
+
+export interface TimeSlotOption {
+  time: string;
+  available: boolean;
+  reason?: string;
+}
+
+export interface CalendarDayInfo {
+  dayNumber: number;
+  dateStr: string;
+  isPast: boolean;
+  isToday: boolean;
+  isWeekend: boolean;
+  isClosed: boolean;
+  closureReason?: string;
+}
+
+export interface MonthCalendarData {
+  year: number;
+  monthIndex: number; // 0 = Jan, 8 = Sept
+  monthLabel: string;
+  daysInMonth: number;
+  leadingEmptyDays: number;
+  days: CalendarDayInfo[];
+}
+
+/**
+ * Standard Candidate Time Slots offered by the clinic (hourly starting from 08:00 AM)
+ */
+export const CANDIDATE_TIME_SLOTS = [
+  '08:00 AM',
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '01:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM'
+];
+
+/**
+ * Known Nova Scotia statutory holidays & clinic closures
+ */
+export const CONFIGURED_CLINIC_CLOSURES: Record<string, string> = {
+  // Fixed annual dates
+  '01-01': "New Year's Day",
+  '07-01': 'Canada Day',
+  '09-30': 'National Day for Truth and Reconciliation',
+  '11-11': 'Remembrance Day',
+  '12-25': 'Christmas Day',
+  '12-26': 'Boxing Day',
+  // 2026 specific dates
+  '2026-02-16': 'Nova Scotia Heritage Day',
+  '2026-04-03': 'Good Friday',
+  '2026-04-06': 'Easter Monday',
+  '2026-05-18': 'Victoria Day',
+  '2026-08-03': 'Natal Day',
+  '2026-09-07': 'Labour Day',
+  '2026-10-12': 'Thanksgiving Day',
+  // 2027 specific dates
+  '2027-02-15': 'Nova Scotia Heritage Day',
+  '2027-03-26': 'Good Friday',
+  '2027-03-29': 'Easter Monday',
+  '2027-05-24': 'Victoria Day',
+  '2027-08-02': 'Natal Day',
+  '2027-09-06': 'Labour Day',
+  '2027-10-11': 'Thanksgiving Day'
+};
+
+/**
+ * Gets today's date formatted as YYYY-MM-DD in America/Halifax
+ */
+export function getHalifaxTodayDateStr(): string {
+  return formatInTimeZone(new Date(), CLINIC_TIME_ZONE, 'yyyy-MM-dd');
+}
+
+/**
+ * Gets current time in Halifax as 24-hr { hours, minutes }
+ */
+export function getHalifaxCurrentTime(): { hours: number; minutes: number } {
+  const now = new Date();
+  const h = parseInt(formatInTimeZone(now, CLINIC_TIME_ZONE, 'H'), 10);
+  const m = parseInt(formatInTimeZone(now, CLINIC_TIME_ZONE, 'm'), 10);
+  return { hours: h, minutes: m };
+}
+
+/**
+ * Checks if a date string YYYY-MM-DD is in the past according to Halifax calendar
+ */
+export function isPastDateInHalifax(dateStr: string): boolean {
+  if (!dateStr) return true;
+  const todayHalifax = getHalifaxTodayDateStr();
+  return dateStr < todayHalifax;
+}
+
+/**
+ * Checks if a date string YYYY-MM-DD is today in Halifax
+ */
+export function isTodayInHalifax(dateStr: string): boolean {
+  if (!dateStr) return false;
+  return dateStr === getHalifaxTodayDateStr();
+}
+
+/**
+ * Checks if a date is a configured clinic holiday or closure
+ */
+export function isClinicClosure(dateStr: string): { isClosed: boolean; reason?: string } {
+  if (!dateStr) return { isClosed: false };
+  
+  // Check exact full date YYYY-MM-DD
+  if (CONFIGURED_CLINIC_CLOSURES[dateStr]) {
+    return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[dateStr] };
+  }
+
+  // Check recurring annual MM-DD
+  const mmdd = dateStr.slice(5); // e.g. "12-25"
+  if (CONFIGURED_CLINIC_CLOSURES[mmdd]) {
+    return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[mmdd] };
+  }
+
+  return { isClosed: false };
+}
+
+/**
+ * Returns clinic operating hours for any given date string YYYY-MM-DD
+ * Clinic Hours:
+ * Monday–Wednesday: 08:00–18:00
+ * Thursday: 08:00–17:00
+ * Friday: 08:00–15:00
+ * Saturday–Sunday: Closed
+ */
+export function getClinicHoursForDate(dateStr: string): ClinicHours {
+  if (!dateStr) {
+    return { isOpen: false, openHour: 0, openMinute: 0, closeHour: 0, closeMinute: 0, hoursDisplay: 'Closed' };
+  }
+
+  const closure = isClinicClosure(dateStr);
+  if (closure.isClosed) {
+    return {
+      isOpen: false,
+      openHour: 0,
+      openMinute: 0,
+      closeHour: 0,
+      closeMinute: 0,
+      hoursDisplay: `Closed (${closure.reason})`,
+      reason: closure.reason
+    };
+  }
+
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return { isOpen: false, openHour: 0, openMinute: 0, closeHour: 0, closeMinute: 0, hoursDisplay: 'Invalid Date' };
+  }
+
+  const y = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const d = parseInt(match[3], 10);
+
+  // Day of week: 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return { isOpen: false, openHour: 0, openMinute: 0, closeHour: 0, closeMinute: 0, hoursDisplay: 'Closed (Weekend)' };
+  }
+
+  if (dayOfWeek === 4) {
+    // Thursday: 08:00–17:00
+    return { isOpen: true, openHour: 8, openMinute: 0, closeHour: 17, closeMinute: 0, hoursDisplay: '8:00 AM – 5:00 PM' };
+  }
+
+  if (dayOfWeek === 5) {
+    // Friday: 08:00–15:00
+    return { isOpen: true, openHour: 8, openMinute: 0, closeHour: 15, closeMinute: 0, hoursDisplay: '8:00 AM – 3:00 PM' };
+  }
+
+  // Monday–Wednesday: 08:00–18:00
+  return { isOpen: true, openHour: 8, openMinute: 0, closeHour: 18, closeMinute: 0, hoursDisplay: '8:00 AM – 6:00 PM' };
+}
+
+/**
+ * Checks if a selected slot fits entirely within clinic hours and has not expired if today
+ */
+export function isSlotCompatibleWithDate(dateStr: string, timeStr: string, durationMinutes = 60): boolean {
+  if (!dateStr || !timeStr) return false;
+
+  const hours = getClinicHoursForDate(dateStr);
+  if (!hours.isOpen) return false;
+
+  const parsedTime = parseTimeTo24Hour(timeStr);
+  if (!parsedTime) return false;
+
+  const slotStartMinutes = parsedTime.hours * 60 + parsedTime.minutes;
+  const slotEndMinutes = slotStartMinutes + durationMinutes;
+
+  const clinicOpenMinutes = hours.openHour * 60 + hours.openMinute;
+  const clinicCloseMinutes = hours.closeHour * 60 + hours.closeMinute;
+
+  // Slot must start at or after clinic open, and finish at or before clinic close
+  if (slotStartMinutes < clinicOpenMinutes || slotEndMinutes > clinicCloseMinutes) {
+    return false;
+  }
+
+  // If appointment is today in Halifax, filter out slots that have already started/passed
+  if (isTodayInHalifax(dateStr)) {
+    const currentHalifax = getHalifaxCurrentTime();
+    const currentMinutes = currentHalifax.hours * 60 + currentHalifax.minutes;
+    if (slotStartMinutes <= currentMinutes) {
+      return false; // Expired same-day slot
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Generates the list of time slot options for a given date, checking clinic operating hours
+ * and expired same-day times.
+ */
+export function getAvailableSlotsForDate(dateStr: string, durationMinutes = 60): TimeSlotOption[] {
+  if (!dateStr) return [];
+
+  const clinicHours = getClinicHoursForDate(dateStr);
+  if (!clinicHours.isOpen) return [];
+
+  const clinicOpenMinutes = clinicHours.openHour * 60 + clinicHours.openMinute;
+  const clinicCloseMinutes = clinicHours.closeHour * 60 + clinicHours.closeMinute;
+
+  const isToday = isTodayInHalifax(dateStr);
+  const currentHalifax = isToday ? getHalifaxCurrentTime() : { hours: 0, minutes: 0 };
+  const currentMinutes = currentHalifax.hours * 60 + currentHalifax.minutes;
+
+  return CANDIDATE_TIME_SLOTS.map(time => {
+    const parsed = parseTimeTo24Hour(time);
+    if (!parsed) {
+      return { time, available: false, reason: 'Invalid format' };
+    }
+
+    const startMinutes = parsed.hours * 60 + parsed.minutes;
+    const endMinutes = startMinutes + durationMinutes;
+
+    if (startMinutes < clinicOpenMinutes) {
+      return { time, available: false, reason: 'Before clinic opens' };
+    }
+
+    if (endMinutes > clinicCloseMinutes) {
+      return { time, available: false, reason: 'Exceeds clinic closing time' };
+    }
+
+    if (isToday && startMinutes <= currentMinutes) {
+      return { time, available: false, reason: 'Slot has already passed today' };
+    }
+
+    return { time, available: true };
+  });
+}
+
+/**
+ * Computes calendar days and dynamic leading empty cells for any month
+ * Heading: Sunday (0) through Saturday (6)
+ * Handles leap years and month navigation reliably.
+ */
+export function getCalendarMonthData(dateInput: Date | { year: number; monthIndex: number }): MonthCalendarData {
+  let year: number;
+  let monthIndex: number; // 0-11
+
+  if (dateInput instanceof Date) {
+    year = dateInput.getFullYear();
+    monthIndex = dateInput.getMonth();
+  } else {
+    year = dateInput.year;
+    monthIndex = dateInput.monthIndex;
+  }
+
+  // Days in month (handles leap years correctly e.g. Feb 2028 = 29)
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+  // First day weekday (0 = Sunday, 1 = Monday, 2 = Tuesday, etc.)
+  const firstDayOfMonthDate = new Date(year, monthIndex, 1);
+  const leadingEmptyDays = firstDayOfMonthDate.getDay();
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const monthLabel = `${monthNames[monthIndex]} ${year}`;
+
+  const todayHalifax = getHalifaxTodayDateStr();
+
+  const days: CalendarDayInfo[] = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const mm = String(monthIndex + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    const dateStr = `${year}-${mm}-${dd}`;
+
+    const isPast = dateStr < todayHalifax;
+    const isToday = dateStr === todayHalifax;
+
+    const weekday = new Date(Date.UTC(year, monthIndex, day, 12, 0, 0)).getUTCDay();
+    const isWeekend = weekday === 0 || weekday === 6;
+
+    const closure = isClinicClosure(dateStr);
+
+    days.push({
+      dayNumber: day,
+      dateStr,
+      isPast,
+      isToday,
+      isWeekend,
+      isClosed: closure.isClosed,
+      closureReason: closure.reason
+    });
+  }
+
+  return {
+    year,
+    monthIndex,
+    monthLabel,
+    daysInMonth,
+    leadingEmptyDays,
+    days
+  };
+}
+
 /**
  * Checks if a date input is missing, invalid, or suspicious (e.g. 1970-01-01 or year < 2000)
  */
@@ -47,8 +382,8 @@ export function isSuspiciousDate(dateInput: Date | string | null | undefined): b
   const str = String(dateInput).trim();
   if (!str) return true;
 
-  // Check 1970-01-01 or 1970 formats
-  if (str.startsWith('1970') || str.startsWith('1969')) return true;
+  // Check 1970-01-01 or 1970/1969 formats
+  if (str.startsWith('1970') || str.startsWith('1969') || str.startsWith('0000')) return true;
 
   // Try parsing yyyy-MM-dd
   const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -151,7 +486,7 @@ export function parseClinicDateTime(
   const hh = String(timeParsed.hours).padStart(2, '0');
   const mm = String(timeParsed.minutes).padStart(2, '0');
 
-  // Local Halifax ISO representation without timezone offset: e.g. "2026-09-24T16:00:00"
+  // Local Halifax ISO representation without timezone offset: e.g. "2026-09-28T16:00:00"
   const localIsoString = `${yyyyMMdd}T${hh}:${mm}:00`;
 
   // Convert clinic-local time in Halifax to exact UTC instant Date

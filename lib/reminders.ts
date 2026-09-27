@@ -266,7 +266,7 @@ export async function processAppointmentReminders(forceAllTomorrow = false, prov
           try {
             await client.emails.send({
               from: 'Porters Lake Dental <noreply@porterslakedental.com>',
-              reply_to: 'dentist@bellaliant.com',
+              replyTo: 'dentist@bellaliant.com',
               to: [patientEmail],
               subject: `Reminder: Your Dental Appointment Tomorrow at ${timeDisplayHalifax}`,
               html: emailHtml

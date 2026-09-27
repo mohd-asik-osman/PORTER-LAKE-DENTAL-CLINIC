@@ -1,19 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Calendar as CalendarIcon, Clock, ChevronLeft, 
   ChevronRight, Heart, CheckCircle2, Loader2,
   Stethoscope, Sparkles, X, User
 } from 'lucide-react';
-import { format, addDays, startOfToday, isSameDay, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isBefore } from 'date-fns';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { AddToCalendar } from '@/components/AddToCalendar';
 import { db, auth } from '@/lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { parseClinicDateTime, CLINIC_TIME_ZONE, formatClinicDateTime } from '@/lib/calendar';
+import { doc, setDoc } from 'firebase/firestore';
+import { 
+  parseClinicDateTime, 
+  CLINIC_TIME_ZONE, 
+  formatClinicDateTime,
+  getCalendarMonthData,
+  getAvailableSlotsForDate,
+  getClinicHoursForDate,
+  isSlotCompatibleWithDate,
+  getHalifaxTodayDateStr
+} from '@/lib/calendar';
 
 enum OperationType {
   CREATE = 'create',
@@ -76,14 +84,10 @@ const SERVICES = [
   { id: 'sedation-dentistry', title: 'Sedation Dentistry', price: '$100' },
 ];
 
-const TIME_SLOTS = [
-  '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'
-];
-
 export default function BookingPage() {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState('');
   const [patientDetails, setPatientDetails] = useState({
     name: '',
@@ -95,9 +99,30 @@ export default function BookingPage() {
     email: '',
     phone: ''
   });
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Month navigation: default to current month in Halifax
+  const todayHalifax = useMemo(() => getHalifaxTodayDateStr(), []);
+  const initialYear = parseInt(todayHalifax.slice(0, 4), 10);
+  const initialMonth = parseInt(todayHalifax.slice(5, 7), 10) - 1; // 0-indexed
+
+  const [currentYear, setCurrentYear] = useState(initialYear);
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(initialMonth);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<{
+    id: string;
+    service: string;
+    date: string;
+    time: string;
+    appointmentStartAt: string;
+    appointmentEndAt: string;
+    patientName: string;
+    dateFormatted: string;
+    timeFormatted: string;
+  } | null>(null);
+
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -106,10 +131,52 @@ export default function BookingPage() {
     }
   }, [step]);
 
-  const days = eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth),
-  });
+  // Dynamic calendar calculation with leading empty cells and leap year support
+  const calendarData = useMemo(() => {
+    return getCalendarMonthData({ year: currentYear, monthIndex: currentMonthIndex });
+  }, [currentYear, currentMonthIndex]);
+
+  // Slots for the selected date
+  const availableSlots = useMemo(() => {
+    if (!selectedDateStr) return [];
+    return getAvailableSlotsForDate(selectedDateStr);
+  }, [selectedDateStr]);
+
+  const handlePrevMonth = () => {
+    if (currentMonthIndex === 0) {
+      setCurrentYear(prev => prev - 1);
+      setCurrentMonthIndex(11);
+    } else {
+      setCurrentMonthIndex(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonthIndex === 11) {
+      setCurrentYear(prev => prev + 1);
+      setCurrentMonthIndex(0);
+    } else {
+      setCurrentMonthIndex(prev => prev + 1);
+    }
+  };
+
+  // Determine if previous month is before today's Halifax month
+  const canGoPrevMonth = useMemo(() => {
+    if (currentYear > initialYear) return true;
+    if (currentYear === initialYear) return currentMonthIndex > initialMonth;
+    return false;
+  }, [currentYear, currentMonthIndex, initialYear, initialMonth]);
+
+  // Date selection with automatic slot compatibility check
+  const handleSelectDate = (dateStr: string) => {
+    setSelectedDateStr(dateStr);
+    setSubmitError(null);
+
+    // Clear incompatible selected time when the date changes
+    if (selectedTime && !isSlotCompatibleWithDate(dateStr, selectedTime)) {
+      setSelectedTime('');
+    }
+  };
 
   const validateStep3 = () => {
     const newErrors = { name: '', email: '', phone: '' };
@@ -142,17 +209,17 @@ export default function BookingPage() {
 
   const handleBooking = async () => {
     setIsLoading(true);
+    setSubmitError(null);
     
     try {
-      if (!selectedDate || !selectedTime) {
-        throw new Error('Please select a valid date and time.');
+      if (!selectedDateStr || !selectedTime) {
+        throw new Error('Please select both a date and an available time slot.');
       }
 
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const parsed = parseClinicDateTime(dateStr, selectedTime);
+      const parsed = parseClinicDateTime(selectedDateStr, selectedTime);
 
       if (!parsed.isValid) {
-        alert(parsed.errorMessage || 'Invalid date or time selected.');
+        setSubmitError(parsed.errorMessage || 'Invalid date or time selected.');
         setIsLoading(false);
         return;
       }
@@ -201,9 +268,22 @@ export default function BookingPage() {
         })
       }).catch(err => console.error('Failed to send confirmation email:', err));
 
+      setConfirmedBooking({
+        id: bookingId,
+        service: selectedService,
+        date: parsed.dateStr,
+        time: parsed.timeStr,
+        appointmentStartAt: parsed.appointmentStartAt,
+        appointmentEndAt: parsed.appointmentEndAt,
+        patientName: patientDetails.name,
+        dateFormatted: parsed.dateFormatted,
+        timeFormatted: parsed.timeFormatted
+      });
+
       setShowModal(true);
     } catch (error) {
       console.error('Error saving booking:', error);
+      setSubmitError(error instanceof Error ? error.message : 'An error occurred while booking.');
     } finally {
       setIsLoading(false);
     }
@@ -212,10 +292,12 @@ export default function BookingPage() {
   const resetForm = () => {
     setStep(1);
     setSelectedService('');
-    setSelectedDate(null);
+    setSelectedDateStr(null);
     setSelectedTime('');
     setPatientDetails({ name: '', email: '', phone: '' });
+    setSubmitError(null);
     setShowModal(false);
+    setConfirmedBooking(null);
   };
 
   return (
@@ -309,51 +391,99 @@ export default function BookingPage() {
                 {/* Calendar */}
                 <div>
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <span className="font-bold text-slate-900 text-sm sm:text-base">{format(currentMonth, 'MMMM yyyy')}</span>
+                    <span className="font-bold text-slate-900 text-sm sm:text-base">{calendarData.monthLabel}</span>
                     <div className="flex space-x-1 sm:space-x-2">
                       <button 
-                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} 
-                        className="p-2 hover:bg-slate-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        onClick={handlePrevMonth}
+                        disabled={!canGoPrevMonth}
+                        className={`p-2 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
+                          canGoPrevMonth ? 'hover:bg-slate-100 text-slate-700' : 'text-slate-300 cursor-not-allowed'
+                        }`}
                         aria-label="Previous month"
                       >
                         <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                       </button>
                       <button 
-                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} 
-                        className="p-2 hover:bg-slate-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        onClick={handleNextMonth} 
+                        className="p-2 hover:bg-slate-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors text-slate-700"
                         aria-label="Next month"
                       >
                         <ChevronRight className="w-5 h-5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
+
+                  {/* Sunday - Saturday weekday headings */}
                   <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                      <span key={d} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d}</span>
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, idx) => (
+                      <span 
+                        key={d} 
+                        className={`text-[10px] font-bold uppercase tracking-widest ${
+                          idx === 0 || idx === 6 ? 'text-slate-300' : 'text-slate-400'
+                        }`}
+                      >
+                        {d}
+                      </span>
                     ))}
                   </div>
+
+                  {/* Calendar Days with dynamic leading empty cells */}
                   <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                    {days.map((day, i) => {
-                      const isPast = isBefore(day, startOfToday());
-                      const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    {/* Leading empty cells for month start weekday alignment */}
+                    {Array.from({ length: calendarData.leadingEmptyDays }).map((_, i) => (
+                      <div key={`empty-${i}`} aria-hidden="true" className="min-h-[40px] sm:min-h-[44px] aspect-square" />
+                    ))}
+
+                    {calendarData.days.map((day) => {
+                      const isSelected = selectedDateStr === day.dateStr;
+                      const isDisabled = day.isPast || day.isWeekend || day.isClosed;
+                      
+                      let statusNote = '';
+                      if (day.isClosed) statusNote = `Closed (${day.closureReason || 'Holiday'})`;
+                      else if (day.isWeekend) statusNote = 'Closed (Weekend)';
+                      else if (day.isPast) statusNote = 'Past date';
+
                       return (
                         <button
-                          key={i}
-                          disabled={isPast}
-                          onClick={() => setSelectedDate(day)}
-                          aria-label={`Select ${format(day, 'MMMM do, yyyy')}`}
-                          aria-pressed={!!isSelected}
-                          className={`min-h-[40px] sm:min-h-[44px] aspect-square rounded-lg sm:rounded-xl flex items-center justify-center text-xs sm:text-sm font-medium transition-all focus:ring-2 focus:ring-blue-500 outline-none ${
-                            isPast ? 'text-slate-200 cursor-not-allowed' :
-                            isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 font-bold' :
-                            isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100 font-bold' :
-                            'hover:bg-slate-100 text-slate-600'
+                          key={day.dateStr}
+                          disabled={isDisabled}
+                          onClick={() => handleSelectDate(day.dateStr)}
+                          title={statusNote || undefined}
+                          aria-label={`${day.dateStr}${statusNote ? ` - ${statusNote}` : ''}`}
+                          aria-pressed={isSelected}
+                          className={`min-h-[40px] sm:min-h-[44px] aspect-square rounded-lg sm:rounded-xl flex flex-col items-center justify-center text-xs sm:text-sm font-medium transition-all focus:ring-2 focus:ring-blue-500 outline-none relative ${
+                            isDisabled 
+                              ? 'text-slate-300 bg-slate-50/40 cursor-not-allowed' 
+                              : isSelected 
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 font-bold scale-105 z-10' 
+                                : day.isToday 
+                                  ? 'bg-blue-50 text-blue-600 border border-blue-200 font-bold hover:bg-blue-100/70' 
+                                  : 'hover:bg-slate-100 text-slate-700 font-semibold'
                           }`}
                         >
-                          {format(day, 'd')}
+                          <span>{day.dayNumber}</span>
+                          {day.isToday && !isSelected && (
+                            <span className="w-1 h-1 rounded-full bg-blue-600 mt-0.5" />
+                          )}
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Calendar Legend */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                      <span>Selected</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-100 border border-blue-300" />
+                      <span>Today</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                      <span>Closed / Past</span>
+                    </span>
                   </div>
                 </div>
 
@@ -361,33 +491,68 @@ export default function BookingPage() {
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4 sm:mb-6">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-blue-600" />
+                      <Clock className="w-4 h-4 text-blue-600 shrink-0" />
                       <span>Available Slots</span>
                     </h3>
                     <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg inline-block w-fit">
-                      All appointment times are in Halifax time
+                      All times in Halifax time (AST/ADT)
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-                    {TIME_SLOTS.map(time => (
-                      <button
-                        key={time}
-                        onClick={() => {
-                          setSelectedTime(time);
-                          setStep(3);
-                        }}
-                        aria-label={`Select time ${time}`}
-                        aria-pressed={selectedTime === time}
-                        className={`min-h-[44px] py-3 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold transition-all focus:ring-2 focus:ring-blue-500 outline-none flex items-center justify-center ${
-                          selectedTime === time 
-                            ? 'bg-blue-50 border-blue-600 text-blue-600 shadow-sm' 
-                            : 'bg-white border-slate-100 hover:border-blue-200 text-slate-600'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
+
+                  {!selectedDateStr ? (
+                    <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center bg-slate-50/60 flex flex-col items-center justify-center">
+                      <CalendarIcon className="w-10 h-10 text-slate-300 mb-3" />
+                      <h4 className="font-bold text-slate-700 text-sm sm:text-base mb-1">Select an Appointment Date</h4>
+                      <p className="text-xs text-slate-500 max-w-xs">
+                        Please choose an open weekday on the calendar to view available clinic hours and time slots.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="px-3.5 py-2.5 bg-blue-50/90 border border-blue-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                        <span className="text-slate-600 font-medium">
+                          Selected: <strong className="text-slate-900">{formatClinicDateTime(`${selectedDateStr}T12:00:00`, 'EEEE, MMMM d, yyyy')}</strong>
+                        </span>
+                        <span className="text-blue-700 font-semibold bg-white/70 px-2 py-0.5 rounded-md border border-blue-200/50 w-fit">
+                          Hours: {getClinicHoursForDate(selectedDateStr).hoursDisplay}
+                        </span>
+                      </div>
+
+                      {availableSlots.filter(s => s.available).length === 0 ? (
+                        <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center text-xs text-amber-800">
+                          <p className="font-bold mb-1">No remaining appointment slots on this date</p>
+                          <p>All clinic slots for this day have ended or are booked. Please select another date.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                          {availableSlots.map(slot => (
+                            <button
+                              key={slot.time}
+                              disabled={!slot.available}
+                              onClick={() => {
+                                if (slot.available) {
+                                  setSelectedTime(slot.time);
+                                  setStep(3);
+                                }
+                              }}
+                              title={slot.reason || undefined}
+                              aria-label={`Select time ${slot.time}${!slot.available ? ` (${slot.reason})` : ''}`}
+                              aria-pressed={selectedTime === slot.time}
+                              className={`min-h-[44px] py-3 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold transition-all focus:ring-2 focus:ring-blue-500 outline-none flex items-center justify-center ${
+                                !slot.available
+                                  ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                                  : selectedTime === slot.time 
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200' 
+                                    : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700'
+                              }`}
+                            >
+                              {slot.time}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

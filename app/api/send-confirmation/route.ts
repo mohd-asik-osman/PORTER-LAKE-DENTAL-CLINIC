@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     const { data, error } = await client.emails.send({
       from: 'Porters Lake Dental <onboarding@resend.dev>',
-      reply_to: 'dentist@bellaliant.com',
+      replyTo: 'dentist@bellaliant.com',
       to: [email],
       subject: 'Booking Confirmation - Porters Lake Dental',
       html: `
