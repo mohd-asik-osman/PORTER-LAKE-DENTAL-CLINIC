@@ -20,7 +20,8 @@ import {
   getAvailableSlotsForDate,
   getClinicHoursForDate,
   isSlotCompatibleWithDate,
-  getHalifaxTodayDateStr
+  getHalifaxTodayDateStr,
+  isPastDateInHalifax
 } from '@/lib/calendar';
 
 enum OperationType {
@@ -142,6 +143,12 @@ export default function BookingPage() {
     return getAvailableSlotsForDate(selectedDateStr);
   }, [selectedDateStr]);
 
+  // Safely derive displayed date/time using parseClinicDateTime(selectedDateStr, selectedTime)
+  const reviewParsed = useMemo(() => {
+    if (!selectedDateStr || !selectedTime) return null;
+    return parseClinicDateTime(selectedDateStr, selectedTime);
+  }, [selectedDateStr, selectedTime]);
+
   const handlePrevMonth = () => {
     if (currentMonthIndex === 0) {
       setCurrentYear(prev => prev - 1);
@@ -214,6 +221,15 @@ export default function BookingPage() {
     try {
       if (!selectedDateStr || !selectedTime) {
         throw new Error('Please select both a date and an available time slot.');
+      }
+
+      // Revalidate the selected date and slot immediately before saving, including past-date and expired-slot checks.
+      if (isPastDateInHalifax(selectedDateStr)) {
+        throw new Error('The selected appointment date is in the past. Please select a future date.');
+      }
+
+      if (!isSlotCompatibleWithDate(selectedDateStr, selectedTime)) {
+        throw new Error('The selected time slot is outside clinic operating hours or has already passed. Please select another time slot.');
       }
 
       const parsed = parseClinicDateTime(selectedDateStr, selectedTime);
@@ -684,30 +700,68 @@ export default function BookingPage() {
                 <button onClick={() => setStep(3)} className="text-xs sm:text-sm font-bold text-slate-400 hover:text-blue-600 shrink-0">Change Details</button>
               </div>
 
+              {(!reviewParsed || !reviewParsed.isValid) && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <strong className="block font-semibold">Appointment Selection Incomplete</strong>
+                    <span>Please choose a valid clinic date and time before confirming.</span>
+                  </div>
+                  <button 
+                    onClick={() => setStep(2)} 
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-colors shrink-0 w-fit"
+                  >
+                    Select Date & Time
+                  </button>
+                </div>
+              )}
+
+              {submitError && (
+                <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm" role="alert">
+                  <strong className="block font-semibold">Unable to process appointment</strong>
+                  <span>{submitError}</span>
+                </div>
+              )}
+
               <dl className="bg-slate-50 rounded-2xl sm:rounded-3xl p-4 sm:p-8 mb-8 sm:mb-10 space-y-4 sm:space-y-6">
                 <div className="flex justify-between items-center border-b border-slate-200 pb-3 sm:pb-4 gap-2 text-sm sm:text-base">
                   <dt className="text-slate-500 font-medium shrink-0">Patient</dt>
-                  <dd className="font-bold text-slate-900 text-right truncate">{patientDetails.name}</dd>
+                  <dd className="font-bold text-slate-900 text-right truncate">{patientDetails.name || 'Not provided'}</dd>
                 </div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-3 sm:pb-4 gap-2 text-sm sm:text-base">
                   <dt className="text-slate-500 font-medium shrink-0">Service</dt>
-                  <dd className="font-bold text-slate-900 text-right truncate">{selectedService}</dd>
+                  <dd className="font-bold text-slate-900 text-right truncate">{selectedService || 'Not selected'}</dd>
                 </div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-3 sm:pb-4 gap-2 text-sm sm:text-base">
                   <dt className="text-slate-500 font-medium shrink-0">Date</dt>
-                  <dd className="font-bold text-slate-900 text-right">{selectedDate ? format(selectedDate, 'MMMM do, yyyy') : ''}</dd>
+                  <dd className="font-bold text-slate-900 text-right">
+                    {reviewParsed && reviewParsed.isValid ? (
+                      reviewParsed.dateFormatted
+                    ) : (
+                      <span className="text-amber-600 font-semibold">No date selected</span>
+                    )}
+                  </dd>
                 </div>
                 <div className="flex justify-between items-center text-sm sm:text-base">
                   <dt className="text-slate-500 font-medium shrink-0">Time</dt>
-                  <dd className="font-bold text-slate-900 text-right">{selectedTime}</dd>
+                  <dd className="font-bold text-slate-900 text-right">
+                    {reviewParsed && reviewParsed.isValid ? (
+                      `${reviewParsed.timeFormatted} (Halifax Time)`
+                    ) : (
+                      <span className="text-amber-600 font-semibold">No time selected</span>
+                    )}
+                  </dd>
                 </div>
               </dl>
 
               <button 
                 onClick={handleBooking}
-                disabled={isLoading}
+                disabled={isLoading || !reviewParsed || !reviewParsed.isValid}
                 aria-busy={isLoading}
-                className="w-full min-h-[48px] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 active:scale-[0.99] transition-all flex items-center justify-center space-x-2 focus:ring-4 focus:ring-blue-500/20 outline-none text-sm sm:text-base"
+                className={`w-full min-h-[48px] py-4 font-bold rounded-2xl shadow-xl transition-all flex items-center justify-center space-x-2 focus:ring-4 focus:ring-blue-500/20 outline-none text-sm sm:text-base ${
+                  isLoading || !reviewParsed || !reviewParsed.isValid
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 active:scale-[0.99]'
+                }`}
               >
                 {isLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin" />
@@ -725,7 +779,7 @@ export default function BookingPage() {
 
       {/* Confirmation Modal */}
       <>
-        {showModal && (
+        {showModal && confirmedBooking && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div 
               onClick={resetForm}
@@ -755,29 +809,31 @@ export default function BookingPage() {
               <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 mb-5 text-left space-y-2.5 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Service:</span>
-                  <span className="font-bold text-slate-900">{selectedService}</span>
+                  <span className="font-bold text-slate-900">{confirmedBooking.service}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Date:</span>
-                  <span className="font-bold text-slate-900">{selectedDate ? format(selectedDate, 'MMMM do, yyyy') : ''}</span>
+                  <span className="font-bold text-slate-900">{confirmedBooking.dateFormatted}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Time:</span>
-                  <span className="font-bold text-slate-900">{selectedTime}</span>
+                  <span className="font-bold text-slate-900">{confirmedBooking.timeFormatted} (Halifax Time)</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Patient:</span>
-                  <span className="font-bold text-slate-900">{patientDetails.name}</span>
+                  <span className="font-bold text-slate-900">{confirmedBooking.patientName}</span>
                 </div>
               </div>
 
               {/* Calendar Integration */}
               <AddToCalendar 
                 appointment={{
-                  service: selectedService,
-                  date: selectedDate || new Date(),
-                  time: selectedTime,
-                  patientName: patientDetails.name
+                  service: confirmedBooking.service,
+                  date: confirmedBooking.date,
+                  time: confirmedBooking.time,
+                  appointmentStartAt: confirmedBooking.appointmentStartAt,
+                  appointmentEndAt: confirmedBooking.appointmentEndAt,
+                  patientName: confirmedBooking.patientName
                 }}
                 className="mb-6"
               />

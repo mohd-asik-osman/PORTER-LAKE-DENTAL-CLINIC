@@ -11,6 +11,17 @@ import {
   TrendingUp, Loader2, Settings, User as UserIcon, Lock, Save,
   X, ChevronDown, CalendarDays, Download, Mail, Bell, Clock
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { toast, Toaster } from 'sonner';
+import { Logo } from '@/components/Logo';
+import { AddToCalendar } from '@/components/AddToCalendar';
+import { parseClinicDateTime, CLINIC_TIME_ZONE, formatClinicDateTime, isSuspiciousDate } from '@/lib/calendar';
+import { useAuth } from '@/lib/auth-context';
+import { db, auth } from '@/lib/firebase';
+import { collection, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
+import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+
 // Dynamically import Recharts components to reduce initial bundle size
 const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
 const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
@@ -27,16 +38,6 @@ const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false 
 const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false });
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
 const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
-import dynamic from 'next/dynamic';
-import { toast, Toaster } from 'sonner';
-import { Logo } from '@/components/Logo';
-import { AddToCalendar } from '@/components/AddToCalendar';
-import { parseClinicDateTime, CLINIC_TIME_ZONE, formatClinicDateTime, isSuspiciousDate } from '@/lib/calendar';
-import { useAuth } from '@/lib/auth-context';
-import { db, auth } from '@/lib/firebase';
-import { collection, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
-import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
 enum OperationType {
   CREATE = 'create',
