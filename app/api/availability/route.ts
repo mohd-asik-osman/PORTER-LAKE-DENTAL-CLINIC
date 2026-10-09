@@ -6,7 +6,21 @@ import {
   CANDIDATE_TIME_SLOTS 
 } from '@/lib/calendar';
 
+import fs from 'fs';
+import path from 'path';
+
 export const dynamic = 'force-dynamic';
+
+function getDynamicClosures() {
+  try {
+    const dataPath = path.join(process.cwd(), 'data', 'holidays.json');
+    if (fs.existsSync(dataPath)) {
+      const raw = fs.readFileSync(dataPath, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (_) {}
+  return [];
+}
 
 /**
  * Public availability endpoint:
@@ -34,8 +48,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const clinicHours = getClinicHoursForDate(date);
-    const slots = getAvailableSlotsForDate(date);
+    const dynamicClosures = getDynamicClosures();
+    const clinicHours = getClinicHoursForDate(date, dynamicClosures);
+    const slots = getAvailableSlotsForDate(date, 60, dynamicClosures);
     const availableSlots = slots.filter(s => s.available).map(s => s.time);
 
     return NextResponse.json({

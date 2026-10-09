@@ -146,21 +146,51 @@ export function isTodayInHalifax(dateStr: string): boolean {
   return dateStr === getHalifaxTodayDateStr();
 }
 
+export interface DynamicHolidayItem {
+  id?: string;
+  title: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  type?: 'holiday' | 'closure' | 'maintenance' | string;
+  notes?: string;
+}
+
 /**
  * Checks if a date is a configured clinic holiday or closure
  */
-export function isClinicClosure(dateStr: string): { isClosed: boolean; reason?: string } {
+export function isClinicClosure(
+  dateStr: string,
+  dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
+): { isClosed: boolean; reason?: string } {
   if (!dateStr) return { isClosed: false };
   
-  // Check exact full date YYYY-MM-DD
+  // Check exact full date YYYY-MM-DD in static config
   if (CONFIGURED_CLINIC_CLOSURES[dateStr]) {
     return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[dateStr] };
   }
 
-  // Check recurring annual MM-DD
+  // Check recurring annual MM-DD in static config
   const mmdd = dateStr.slice(5); // e.g. "12-25"
   if (CONFIGURED_CLINIC_CLOSURES[mmdd]) {
     return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[mmdd] };
+  }
+
+  // Check dynamic closures from Firestore
+  if (dynamicClosures) {
+    if (Array.isArray(dynamicClosures)) {
+      for (const item of dynamicClosures) {
+        if (!item.startDate || !item.endDate) continue;
+        const start = item.startDate <= item.endDate ? item.startDate : item.endDate;
+        const end = item.startDate <= item.endDate ? item.endDate : item.startDate;
+        if (dateStr >= start && dateStr <= end) {
+          return { isClosed: true, reason: item.title || 'Clinic Closure' };
+        }
+      }
+    } else if (typeof dynamicClosures === 'object') {
+      if (dynamicClosures[dateStr]) {
+        return { isClosed: true, reason: dynamicClosures[dateStr] };
+      }
+    }
   }
 
   return { isClosed: false };
@@ -174,12 +204,15 @@ export function isClinicClosure(dateStr: string): { isClosed: boolean; reason?: 
  * Friday: 08:00–15:00
  * Saturday–Sunday: Closed
  */
-export function getClinicHoursForDate(dateStr: string): ClinicHours {
+export function getClinicHoursForDate(
+  dateStr: string,
+  dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
+): ClinicHours {
   if (!dateStr) {
     return { isOpen: false, openHour: 0, openMinute: 0, closeHour: 0, closeMinute: 0, hoursDisplay: 'Closed' };
   }
 
-  const closure = isClinicClosure(dateStr);
+  const closure = isClinicClosure(dateStr, dynamicClosures);
   if (closure.isClosed) {
     return {
       isOpen: false,
@@ -225,10 +258,15 @@ export function getClinicHoursForDate(dateStr: string): ClinicHours {
 /**
  * Checks if a selected slot fits entirely within clinic hours and has not expired if today
  */
-export function isSlotCompatibleWithDate(dateStr: string, timeStr: string, durationMinutes = 60): boolean {
+export function isSlotCompatibleWithDate(
+  dateStr: string, 
+  timeStr: string, 
+  durationMinutes = 60,
+  dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
+): boolean {
   if (!dateStr || !timeStr) return false;
 
-  const hours = getClinicHoursForDate(dateStr);
+  const hours = getClinicHoursForDate(dateStr, dynamicClosures);
   if (!hours.isOpen) return false;
 
   const parsedTime = parseTimeTo24Hour(timeStr);
@@ -261,10 +299,14 @@ export function isSlotCompatibleWithDate(dateStr: string, timeStr: string, durat
  * Generates the list of time slot options for a given date, checking clinic operating hours
  * and expired same-day times.
  */
-export function getAvailableSlotsForDate(dateStr: string, durationMinutes = 60): TimeSlotOption[] {
+export function getAvailableSlotsForDate(
+  dateStr: string,
+  durationMinutes = 60,
+  dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
+): TimeSlotOption[] {
   if (!dateStr) return [];
 
-  const clinicHours = getClinicHoursForDate(dateStr);
+  const clinicHours = getClinicHoursForDate(dateStr, dynamicClosures);
   if (!clinicHours.isOpen) return [];
 
   const clinicOpenMinutes = clinicHours.openHour * 60 + clinicHours.openMinute;
@@ -304,7 +346,10 @@ export function getAvailableSlotsForDate(dateStr: string, durationMinutes = 60):
  * Heading: Sunday (0) through Saturday (6)
  * Handles leap years and month navigation reliably.
  */
-export function getCalendarMonthData(dateInput: Date | { year: number; monthIndex: number }): MonthCalendarData {
+export function getCalendarMonthData(
+  dateInput: Date | { year: number; monthIndex: number },
+  dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
+): MonthCalendarData {
   let year: number;
   let monthIndex: number; // 0-11
 
@@ -344,7 +389,7 @@ export function getCalendarMonthData(dateInput: Date | { year: number; monthInde
     const weekday = new Date(Date.UTC(year, monthIndex, day, 12, 0, 0)).getUTCDay();
     const isWeekend = weekday === 0 || weekday === 6;
 
-    const closure = isClinicClosure(dateStr);
+    const closure = isClinicClosure(dateStr, dynamicClosures);
 
     days.push({
       dayNumber: day,

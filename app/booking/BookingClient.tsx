@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { 
   Calendar as CalendarIcon, Clock, ChevronLeft, 
   ChevronRight, Heart, CheckCircle2, Loader2,
-  Stethoscope, Sparkles, X, User
+  Stethoscope, Sparkles, X, User, Palmtree
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { AddToCalendar } from '@/components/AddToCalendar';
+import { toast } from 'sonner';
 import { db, auth } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { 
   parseClinicDateTime, 
   CLINIC_TIME_ZONE, 
@@ -20,8 +21,10 @@ import {
   getAvailableSlotsForDate,
   getClinicHoursForDate,
   isSlotCompatibleWithDate,
+  isClinicClosure,
   getHalifaxTodayDateStr,
-  isPastDateInHalifax
+  isPastDateInHalifax,
+  DynamicHolidayItem
 } from '@/lib/calendar';
 
 enum OperationType {
@@ -132,16 +135,119 @@ export default function BookingPage() {
     }
   }, [step]);
 
-  // Dynamic calendar calculation with leading empty cells and leap year support
+  // Real-time clinic holidays and closures
+  const [holidays, setHolidays] = useState<DynamicHolidayItem[]>([]);
+
+  useEffect(() => {
+    // 1. Initial immediate load from localStorage for zero latency
+    try {
+      const cached = localStorage.getItem('dentacare_holidays');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setHolidays(parsed);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fetch from server API endpoint to guarantee latest closures across all devices
+    const fetchHolidays = () => {
+      fetch('/api/holidays')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
+            try {
+              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+            } catch (_) {}
+          }
+        })
+        .catch(err => console.warn('Could not fetch /api/holidays:', err));
+    };
+
+    fetchHolidays();
+
+    // 3. Real-time BroadcastChannel: instant (1ms) sync when admin deletes or adds closures
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('dentacare_clinic_sync');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'HOLIDAYS_UPDATED' && Array.isArray(event.data.holidays)) {
+          setHolidays(event.data.holidays);
+        }
+      };
+    } catch (_) {}
+
+    // 4. Window storage event listener for cross-tab local storage sync
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'dentacare_holidays') {
+        try {
+          const updated = e.newValue ? JSON.parse(e.newValue) : [];
+          if (Array.isArray(updated)) {
+            setHolidays(updated);
+          }
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 5. Custom in-app event listener
+    const handleCustomSync = (e: any) => {
+      if (Array.isArray(e.detail)) {
+        setHolidays(e.detail);
+      }
+    };
+    window.addEventListener('dentacare_holidays_updated', handleCustomSync);
+
+    // 6. Window focus refresh (when user switches back to this tab)
+    const handleFocus = () => {
+      fetchHolidays();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // 7. Attach Firestore listener if accessible
+    let unsubscribeFirestore: (() => void) | null = null;
+    try {
+      const q = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
+      unsubscribeFirestore = onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as DynamicHolidayItem));
+        setHolidays(list);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(list));
+        } catch (_) {}
+      }, (err) => {
+        console.warn('Real-time holidays listener note:', err);
+      });
+    } catch (_) {}
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('dentacare_holidays_updated', handleCustomSync);
+      window.removeEventListener('focus', handleFocus);
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
+  }, []);
+
+  // Dynamic calendar calculation with leading empty cells, leap year, and clinic closures support
   const calendarData = useMemo(() => {
-    return getCalendarMonthData({ year: currentYear, monthIndex: currentMonthIndex });
-  }, [currentYear, currentMonthIndex]);
+    return getCalendarMonthData({ year: currentYear, monthIndex: currentMonthIndex }, holidays);
+  }, [currentYear, currentMonthIndex, holidays]);
+
+  // Closures that affect the currently viewed month
+  const currentMonthClosures = useMemo(() => {
+    const currentMonthStr = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}`;
+    return holidays.filter(h => {
+      return h.startDate.startsWith(currentMonthStr) || h.endDate.startsWith(currentMonthStr) ||
+             (h.startDate <= `${currentMonthStr}-01` && h.endDate >= `${currentMonthStr}-28`);
+    });
+  }, [currentYear, currentMonthIndex, holidays]);
 
   // Slots for the selected date
   const availableSlots = useMemo(() => {
     if (!selectedDateStr) return [];
-    return getAvailableSlotsForDate(selectedDateStr);
-  }, [selectedDateStr]);
+    return getAvailableSlotsForDate(selectedDateStr, 60, holidays);
+  }, [selectedDateStr, holidays]);
 
   // Safely derive displayed date/time using parseClinicDateTime(selectedDateStr, selectedTime)
   const reviewParsed = useMemo(() => {
@@ -176,11 +282,18 @@ export default function BookingPage() {
 
   // Date selection with automatic slot compatibility check
   const handleSelectDate = (dateStr: string) => {
+    // Strictly prevent selection of closed days
+    const closure = isClinicClosure(dateStr, holidays);
+    if (closure.isClosed) {
+      toast.error(`Clinic is closed on this date (${closure.reason || 'Scheduled Closure'}). Please choose another date.`);
+      return;
+    }
+
     setSelectedDateStr(dateStr);
     setSubmitError(null);
 
     // Clear incompatible selected time when the date changes
-    if (selectedTime && !isSlotCompatibleWithDate(dateStr, selectedTime)) {
+    if (selectedTime && !isSlotCompatibleWithDate(dateStr, selectedTime, 60, holidays)) {
       setSelectedTime('');
     }
   };
@@ -403,6 +516,25 @@ export default function BookingPage() {
                 <button onClick={() => setStep(1)} className="text-xs sm:text-sm font-bold text-slate-400 hover:text-blue-600 shrink-0">Change Service</button>
               </div>
 
+              {/* Clinic Closures Banner if any in this month */}
+              {currentMonthClosures.length > 0 && (
+                <div className="mb-6 p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-start space-x-3 text-xs text-amber-900">
+                  <Palmtree className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Clinic Closure Notice for {calendarData.monthLabel}: </span>
+                    <span className="text-amber-800">
+                      Closed on{' '}
+                      {currentMonthClosures.map((c, idx) => (
+                        <span key={c.id || idx}>
+                          <strong className="font-bold">{c.title}</strong> ({c.startDate === c.endDate ? c.startDate : `${c.startDate} to ${c.endDate}`})
+                          {idx < currentMonthClosures.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}. These dates are visually blocked from booking below.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                 {/* Calendar */}
                 <div>
@@ -455,7 +587,7 @@ export default function BookingPage() {
                       const isDisabled = day.isPast || day.isWeekend || day.isClosed;
                       
                       let statusNote = '';
-                      if (day.isClosed) statusNote = `Closed (${day.closureReason || 'Holiday'})`;
+                      if (day.isClosed) statusNote = `Clinic Closed: ${day.closureReason || 'Scheduled Closure'}`;
                       else if (day.isWeekend) statusNote = 'Closed (Weekend)';
                       else if (day.isPast) statusNote = 'Past date';
 
@@ -463,22 +595,34 @@ export default function BookingPage() {
                         <button
                           key={day.dateStr}
                           disabled={isDisabled}
-                          onClick={() => handleSelectDate(day.dateStr)}
+                          onClick={() => {
+                            if (isDisabled) return;
+                            handleSelectDate(day.dateStr);
+                          }}
                           title={statusNote || undefined}
                           aria-label={`${day.dateStr}${statusNote ? ` - ${statusNote}` : ''}`}
                           aria-pressed={isSelected}
                           className={`min-h-[40px] sm:min-h-[44px] aspect-square rounded-lg sm:rounded-xl flex flex-col items-center justify-center text-xs sm:text-sm font-medium transition-all focus:ring-2 focus:ring-blue-500 outline-none relative ${
-                            isDisabled 
-                              ? 'text-slate-300 bg-slate-50/40 cursor-not-allowed' 
-                              : isSelected 
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 font-bold scale-105 z-10' 
-                                : day.isToday 
-                                  ? 'bg-blue-50 text-blue-600 border border-blue-200 font-bold hover:bg-blue-100/70' 
-                                  : 'hover:bg-slate-100 text-slate-700 font-semibold'
+                            day.isClosed
+                              ? 'bg-rose-50/90 text-rose-500 border border-rose-200 cursor-not-allowed hover:bg-rose-50'
+                              : isDisabled 
+                                ? 'text-slate-300 bg-slate-50/40 cursor-not-allowed' 
+                                : isSelected 
+                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 font-bold scale-105 z-10' 
+                                  : day.isToday 
+                                    ? 'bg-blue-50 text-blue-600 border border-blue-200 font-bold hover:bg-blue-100/70' 
+                                    : 'hover:bg-slate-100 text-slate-700 font-semibold'
                           }`}
                         >
-                          <span>{day.dayNumber}</span>
-                          {day.isToday && !isSelected && (
+                          <span className={day.isClosed ? 'line-through text-rose-500 font-bold' : ''}>
+                            {day.dayNumber}
+                          </span>
+                          {day.isClosed && (
+                            <span className="text-[8px] font-black uppercase tracking-tighter text-rose-600 leading-none mt-0.5">
+                              Closed
+                            </span>
+                          )}
+                          {day.isToday && !isSelected && !day.isClosed && (
                             <span className="w-1 h-1 rounded-full bg-blue-600 mt-0.5" />
                           )}
                         </button>
@@ -497,8 +641,12 @@ export default function BookingPage() {
                       <span>Today</span>
                     </span>
                     <span className="flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      <span className="text-rose-600 font-semibold">Clinic Closed</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                      <span>Closed / Past</span>
+                      <span>Weekend / Past</span>
                     </span>
                   </div>
                 </div>

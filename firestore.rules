@@ -98,5 +98,20 @@ service cloud.firestore {
       // ONLY authenticated admins may delete bookings.
       allow delete: if isAdmin();
     }
+
+    // Holidays and clinic closure records
+    match /holidays/{holidayId} {
+      // Patients and visitors can view clinic closures to see unavailable dates
+      allow read: if true;
+
+      // Only administrators can add, update, or remove clinic holidays
+      allow create, update: if isAdmin() && 
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.startDate is string &&
+        request.resource.data.endDate is string;
+
+      allow delete: if isAdmin();
+    }
   }
 }
