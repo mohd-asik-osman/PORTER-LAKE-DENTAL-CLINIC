@@ -57,12 +57,48 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     holidays: holidays.sort((a, b) => a.startDate.localeCompare(b.startDate))
+  }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
+    }
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
+
+    // Support batch array or single item
+    if (Array.isArray(payload.holidays)) {
+      const current = getStoredHolidays();
+      const map = new Map<string, HolidayRecord>();
+      current.forEach(h => map.set(h.id, h));
+      
+      payload.holidays.forEach((item: any) => {
+        if (item.title && item.startDate && item.endDate) {
+          const start = item.startDate <= item.endDate ? item.startDate : item.endDate;
+          const end = item.startDate <= item.endDate ? item.endDate : item.startDate;
+          const record: HolidayRecord = {
+            id: item.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            title: String(item.title).trim(),
+            startDate: start,
+            endDate: end,
+            type: item.type || 'closure',
+            notes: item.notes ? String(item.notes).trim() : '',
+            createdAt: item.createdAt || new Date().toISOString(),
+            createdBy: item.createdBy || 'admin'
+          };
+          map.set(record.id, record);
+        }
+      });
+
+      const updated = Array.from(map.values()).sort((a, b) => a.startDate.localeCompare(b.startDate));
+      saveStoredHolidays(updated);
+      return NextResponse.json({ success: true, count: payload.holidays.length, holidays: updated }, {
+        headers: { 'Cache-Control': 'no-store, max-age=0' }
+      });
+    }
+
     if (!payload.title || !payload.startDate || !payload.endDate) {
       return NextResponse.json({ error: 'Title, startDate, and endDate are required' }, { status: 400 });
     }
@@ -82,10 +118,12 @@ export async function POST(req: NextRequest) {
     };
 
     const current = getStoredHolidays();
-    const updated = [...current.filter(h => h.id !== newRecord.id), newRecord];
+    const updated = [...current.filter(h => h.id !== newRecord.id), newRecord].sort((a, b) => a.startDate.localeCompare(b.startDate));
     saveStoredHolidays(updated);
 
-    return NextResponse.json({ success: true, record: newRecord });
+    return NextResponse.json({ success: true, record: newRecord, holidays: updated }, {
+      headers: { 'Cache-Control': 'no-store, max-age=0' }
+    });
   } catch (err) {
     console.error('Error adding holiday:', err);
     return NextResponse.json({ error: 'Failed to save holiday' }, { status: 500 });
@@ -95,7 +133,14 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    let id = searchParams.get('id');
+    if (!id) {
+      try {
+        const body = await req.json();
+        id = body?.id;
+      } catch (_) {}
+    }
+
     if (!id) {
       return NextResponse.json({ error: 'ID parameter is required' }, { status: 400 });
     }
@@ -104,7 +149,9 @@ export async function DELETE(req: NextRequest) {
     const filtered = current.filter(h => h.id !== id);
     saveStoredHolidays(filtered);
 
-    return NextResponse.json({ success: true, removedId: id });
+    return NextResponse.json({ success: true, removedId: id, holidays: filtered }, {
+      headers: { 'Cache-Control': 'no-store, max-age=0' }
+    });
   } catch (err) {
     console.error('Error deleting holiday:', err);
     return NextResponse.json({ error: 'Failed to delete holiday' }, { status: 500 });

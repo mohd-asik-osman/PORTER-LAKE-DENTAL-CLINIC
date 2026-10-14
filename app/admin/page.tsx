@@ -149,54 +149,116 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.LIST, 'users');
     });
 
-    // Real-time holidays
-    const holidaysQuery = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
-    const unsubscribeHolidays = onSnapshot(holidaysQuery, (snapshot) => {
-      const holidaysData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      if (holidaysData.length > 0) {
-        setHolidays(holidaysData);
-        try {
-          localStorage.setItem('dentacare_holidays', JSON.stringify(holidaysData));
-        } catch (_) {}
-      }
-    }, (error) => {
-      console.warn('Real-time holidays listener note:', error);
-    });
-
     return () => {
       unsubscribeBookings();
       unsubscribeUsers();
-      unsubscribeHolidays();
     };
   }, [currentUser]);
 
+  // Real-time holidays synchronization across tabs, Firestore, and server API
   useEffect(() => {
-    // Initial local cache load for holidays
+    // 1. Initial local cache load for holidays
     try {
       const cached = localStorage.getItem('dentacare_holidays');
       if (cached) {
-        setHolidays(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setHolidays(parsed);
+        }
       }
     } catch (_) {}
 
-    // Fetch latest closures from server API
-    fetch('/api/holidays')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.holidays)) {
-          setHolidays(prev => {
-            const map = new Map();
-            prev.forEach(h => map.set(h.id, h));
-            data.holidays.forEach((h: any) => map.set(h.id, h));
-            const merged = Array.from(map.values()).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    // 2. Fetch latest closures from server API
+    const fetchHolidays = () => {
+      fetch('/api/holidays')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
             try {
-              localStorage.setItem('dentacare_holidays', JSON.stringify(merged));
+              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
             } catch (_) {}
-            return merged;
-          });
+          }
+        })
+        .catch(err => console.warn('Could not fetch /api/holidays:', err));
+    };
+
+    fetchHolidays();
+
+    // 3. Real-time BroadcastChannel: instant (1ms) sync between tabs
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('dentacare_clinic_sync');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'HOLIDAYS_UPDATED' && Array.isArray(event.data.holidays)) {
+          setHolidays(event.data.holidays);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(event.data.holidays));
+          } catch (_) {}
         }
-      })
-      .catch(err => console.warn('Could not fetch /api/holidays:', err));
+      };
+    } catch (_) {}
+
+    // 4. Window storage event for cross-tab sync
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'dentacare_holidays') {
+        try {
+          const updated = e.newValue ? JSON.parse(e.newValue) : [];
+          if (Array.isArray(updated)) {
+            setHolidays(updated);
+          }
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 5. Custom event for intra-window sync
+    const handleCustomSync = (e: any) => {
+      if (Array.isArray(e.detail)) {
+        setHolidays(e.detail);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(e.detail));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('dentacare_holidays_updated', handleCustomSync);
+
+    // 6. Focus listener
+    const handleFocus = () => {
+      fetchHolidays();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // 7. Background heartbeat polling (every 3s)
+    const pollInterval = setInterval(() => {
+      fetchHolidays();
+    }, 3000);
+
+    // 8. Real-time Firestore listener
+    let unsubscribeHolidays: (() => void) | null = null;
+    try {
+      const holidaysQuery = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
+      unsubscribeHolidays = onSnapshot(holidaysQuery, (snapshot) => {
+        const holidaysData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        if (holidaysData.length > 0) {
+          setHolidays(holidaysData);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(holidaysData));
+          } catch (_) {}
+        }
+      }, (error) => {
+        console.warn('Real-time holidays listener note:', error);
+      });
+    } catch (_) {}
+
+    return () => {
+      if (channel) channel.close();
+      clearInterval(pollInterval);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('dentacare_holidays_updated', handleCustomSync);
+      window.removeEventListener('focus', handleFocus);
+      if (unsubscribeHolidays) unsubscribeHolidays();
+    };
   }, []);
 
   useEffect(() => {
@@ -466,27 +528,24 @@ export default function AdminDashboard() {
         createdBy: currentUser?.email || 'admin'
       };
 
-      // 1. Optimistic local state & localStorage persistence
-      let updatedHolidaysList: any[] = [];
-      setHolidays(prev => {
-        const filtered = prev.filter(h => h.id !== holidayId);
-        const updated = [...filtered, docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
-        updatedHolidaysList = updated;
-        try {
-          localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-        } catch (_) {}
-        return updated;
-      });
+      // 1. Calculate the populated updated list immediately
+      const currentList = Array.isArray(holidays) ? holidays : [];
+      const updated = [...currentList.filter(h => h.id !== holidayId), docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      
+      setHolidays(updated);
+      try {
+        localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
+      } catch (_) {}
 
       // Broadcast instant update across all browser tabs/windows
       try {
         const channel = new BroadcastChannel('dentacare_clinic_sync');
-        channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updatedHolidaysList });
+        channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
         channel.close();
       } catch (_) {}
 
       try {
-        window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updatedHolidaysList }));
+        window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
       } catch (_) {}
 
       // 2. Server API save for universal cross-device persistence
@@ -533,10 +592,10 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteHoliday = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to remove closure "${title}"?`)) return;
+    // Immediate deletion without window.confirm blocking in iframe
     setProcessingId(id);
     
-    // 1. Calculate updated list immediately
+    // 1. Calculate updated list immediately for optimistic UI
     const updated = holidays.filter(h => h.id !== id);
     setHolidays(updated);
 
@@ -622,13 +681,34 @@ export default function AdminDashboard() {
       }
 
       if (newItems.length > 0) {
-        setHolidays(prev => {
-          const updated = [...prev, ...newItems].sort((a, b) => a.startDate.localeCompare(b.startDate));
-          try {
-            localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-          } catch (_) {}
-          return updated;
-        });
+        const currentList = Array.isArray(holidays) ? holidays : [];
+        const updated = [...currentList, ...newItems].sort((a, b) => a.startDate.localeCompare(b.startDate));
+        setHolidays(updated);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
+        } catch (_) {}
+
+        // Broadcast instant update across all browser tabs/windows
+        try {
+          const channel = new BroadcastChannel('dentacare_clinic_sync');
+          channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
+          channel.close();
+        } catch (_) {}
+
+        try {
+          window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
+        } catch (_) {}
+
+        // Save batch to server API
+        try {
+          await fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ holidays: newItems })
+          });
+        } catch (apiErr) {
+          console.warn('API save note for statutory holidays:', apiErr);
+        }
       }
 
       toast.success(`Imported ${addedCount} standard statutory clinic closures!`);
@@ -669,14 +749,34 @@ export default function AdminDashboard() {
         createdBy: currentUser?.email || 'admin'
       };
 
-      setHolidays(prev => {
-        const filtered = prev.filter(h => h.id !== holidayId);
-        const updated = [...filtered, docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
-        try {
-          localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-        } catch (_) {}
-        return updated;
-      });
+      const currentList = Array.isArray(holidays) ? holidays : [];
+      const updated = [...currentList.filter(h => h.id !== holidayId), docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      setHolidays(updated);
+      try {
+        localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
+      } catch (_) {}
+
+      // Broadcast instant update across all browser tabs/windows
+      try {
+        const channel = new BroadcastChannel('dentacare_clinic_sync');
+        channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
+        channel.close();
+      } catch (_) {}
+
+      try {
+        window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
+      } catch (_) {}
+
+      // Server API save
+      try {
+        await fetch('/api/holidays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(docData)
+        });
+      } catch (apiErr) {
+        console.warn('API save note for bulk block:', apiErr);
+      }
 
       try {
         await setDoc(doc(db, 'holidays', holidayId), docData);
@@ -1698,7 +1798,7 @@ export default function AdminDashboard() {
                               </div>
 
                               {/* Relative time badge & action */}
-                              <div className="text-right shrink-0">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold block text-center ${
                                   isActiveNow 
                                     ? 'bg-amber-200 text-amber-900 animate-pulse'
@@ -1708,6 +1808,22 @@ export default function AdminDashboard() {
                                 }`}>
                                   {daysDiffText}
                                 </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteHoliday(closure.id, closure.title);
+                                  }}
+                                  disabled={processingId === closure.id}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center disabled:opacity-50"
+                                  title={`Remove closure: ${closure.title}`}
+                                  aria-label={`Remove closure ${closure.title}`}
+                                >
+                                  {processingId === closure.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
                               </div>
                             </div>
                           );
@@ -2492,10 +2608,15 @@ export default function AdminDashboard() {
                             </span>
                             <button
                               onClick={() => handleDeleteHoliday(holiday.id, holiday.title)}
-                              className="px-3 py-1 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold flex items-center space-x-1"
+                              disabled={processingId === holiday.id}
+                              className="px-3 py-1 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold flex items-center space-x-1 disabled:opacity-50"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Remove</span>
+                              {processingId === holiday.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                              <span>{processingId === holiday.id ? 'Removing...' : 'Remove'}</span>
                             </button>
                           </div>
                         </div>

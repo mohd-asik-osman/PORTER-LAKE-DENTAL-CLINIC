@@ -174,6 +174,9 @@ export default function BookingPage() {
       channel.onmessage = (event) => {
         if (event.data?.type === 'HOLIDAYS_UPDATED' && Array.isArray(event.data.holidays)) {
           setHolidays(event.data.holidays);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(event.data.holidays));
+          } catch (_) {}
         }
       };
     } catch (_) {}
@@ -195,6 +198,9 @@ export default function BookingPage() {
     const handleCustomSync = (e: any) => {
       if (Array.isArray(e.detail)) {
         setHolidays(e.detail);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(e.detail));
+        } catch (_) {}
       }
     };
     window.addEventListener('dentacare_holidays_updated', handleCustomSync);
@@ -205,16 +211,23 @@ export default function BookingPage() {
     };
     window.addEventListener('focus', handleFocus);
 
-    // 7. Attach Firestore listener if accessible
+    // 7. Background heartbeat polling (every 3s) for seamless multi-device/multi-window synchronization
+    const pollInterval = setInterval(() => {
+      fetchHolidays();
+    }, 3000);
+
+    // 8. Attach Firestore real-time listener
     let unsubscribeFirestore: (() => void) | null = null;
     try {
       const q = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
       unsubscribeFirestore = onSnapshot(q, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as DynamicHolidayItem));
-        setHolidays(list);
-        try {
-          localStorage.setItem('dentacare_holidays', JSON.stringify(list));
-        } catch (_) {}
+        if (list.length > 0) {
+          setHolidays(list);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(list));
+          } catch (_) {}
+        }
       }, (err) => {
         console.warn('Real-time holidays listener note:', err);
       });
@@ -222,6 +235,7 @@ export default function BookingPage() {
 
     return () => {
       if (channel) channel.close();
+      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('dentacare_holidays_updated', handleCustomSync);
       window.removeEventListener('focus', handleFocus);

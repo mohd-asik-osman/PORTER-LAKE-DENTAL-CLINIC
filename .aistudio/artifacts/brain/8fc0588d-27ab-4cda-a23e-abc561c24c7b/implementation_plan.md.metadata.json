@@ -1,0 +1,6 @@
+{
+  "summary": "Implementation plan to fix the holiday deletion bug in the Admin Panel (caused by blocked window.confirm() in iframe), ensure immediate single-click deletion with clear visual loading and toast feedback, and sync real-time holiday deletion across both Admin overview/closures and patient booking availability.",
+  "updatedAt": "2026-10-14T14:05:44.738759220Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
