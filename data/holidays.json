@@ -1,15 +1,5 @@
 [
   {
-    "id": "closure-2026-10-05",
-    "title": "Clinic Closure",
-    "startDate": "2026-10-05",
-    "endDate": "2026-10-05",
-    "type": "closure",
-    "notes": "Scheduled Clinic Closure",
-    "createdAt": "2026-10-01T13:00:00.000Z",
-    "createdBy": "admin"
-  },
-  {
     "id": "statutory-thanksgiving-2026",
     "title": "Thanksgiving Day",
     "startDate": "2026-10-12",

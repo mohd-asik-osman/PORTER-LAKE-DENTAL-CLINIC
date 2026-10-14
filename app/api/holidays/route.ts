@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,16 +17,36 @@ export interface HolidayRecord {
   createdBy?: string;
 }
 
-// Fallback initial statutory closures if both Firestore and file are completely empty
+// Default initial statutory closures if the file does not exist yet
 const DEFAULT_FALLBACK_HOLIDAYS: HolidayRecord[] = [
   {
-    id: 'closure-2026-10-05',
-    title: 'Clinic Closure',
-    startDate: '2026-10-05',
-    endDate: '2026-10-05',
-    type: 'closure',
-    notes: 'Scheduled Clinic Closure',
-    createdAt: new Date().toISOString(),
+    id: 'statutory-thanksgiving-2026',
+    title: 'Thanksgiving Day',
+    startDate: '2026-10-12',
+    endDate: '2026-10-12',
+    type: 'holiday',
+    notes: 'Statutory Holiday',
+    createdAt: '2026-10-01T13:00:00.000Z',
+    createdBy: 'admin'
+  },
+  {
+    id: 'statutory-remembrance-2026',
+    title: 'Remembrance Day',
+    startDate: '2026-11-11',
+    endDate: '2026-11-11',
+    type: 'holiday',
+    notes: 'Statutory Holiday',
+    createdAt: '2026-10-01T13:00:00.000Z',
+    createdBy: 'admin'
+  },
+  {
+    id: 'statutory-christmas-2026',
+    title: 'Christmas & Boxing Day Closure',
+    startDate: '2026-12-24',
+    endDate: '2026-12-26',
+    type: 'holiday',
+    notes: 'Clinic Winter Break',
+    createdAt: '2026-10-01T13:00:00.000Z',
     createdBy: 'admin'
   }
 ];
@@ -39,9 +57,12 @@ function getStoredFileHolidays(): HolidayRecord[] {
       const raw = fs.readFileSync(DATA_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
+    } else {
+      saveStoredFileHolidays(DEFAULT_FALLBACK_HOLIDAYS);
+      return DEFAULT_FALLBACK_HOLIDAYS;
     }
   } catch (err) {
-    console.error('Error reading fallback holidays data file:', err);
+    console.error('Error reading holidays data file:', err);
   }
   return DEFAULT_FALLBACK_HOLIDAYS;
 }
@@ -54,44 +75,18 @@ function saveStoredFileHolidays(data: HolidayRecord[]) {
     }
     fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error writing fallback holidays data file:', err);
+    console.error('Error writing holidays data file:', err);
   }
 }
 
 export async function GET() {
   try {
-    // 1. Try fetching live from Firestore first
-    try {
-      const snapshot = await getDocs(collection(db, 'holidays'));
-      if (!snapshot.empty) {
-        const cloudHolidays: HolidayRecord[] = snapshot.docs.map(d => ({
-          ...d.data(),
-          id: d.id
-        } as HolidayRecord)).sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-        // Mirror to local disk cache for offline/cold-start fallback
-        saveStoredFileHolidays(cloudHolidays);
-
-        return NextResponse.json({
-          success: true,
-          source: 'cloud',
-          holidays: cloudHolidays
-        }, {
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
-          }
-        });
-      }
-    } catch (firestoreError) {
-      console.warn('Firestore GET /api/holidays fallback to local cache:', firestoreError);
-    }
-
-    // 2. Fallback to local file cache
     const fileHolidays = getStoredFileHolidays();
+    const sorted = [...fileHolidays].sort((a, b) => a.startDate.localeCompare(b.startDate));
     return NextResponse.json({
       success: true,
-      source: 'file',
-      holidays: fileHolidays.sort((a, b) => a.startDate.localeCompare(b.startDate))
+      source: 'server',
+      holidays: sorted
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
@@ -107,7 +102,7 @@ export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
 
-    // Support batch array or single item
+    // Support batch array of holidays
     if (Array.isArray(payload.holidays)) {
       const batchList: HolidayRecord[] = [];
       for (const item of payload.holidays) {
@@ -115,7 +110,7 @@ export async function POST(req: NextRequest) {
           const start = item.startDate <= item.endDate ? item.startDate : item.endDate;
           const end = item.startDate <= item.endDate ? item.endDate : item.startDate;
           const record: HolidayRecord = {
-            id: item.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            id: item.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             title: String(item.title).trim(),
             startDate: start,
             endDate: end,
@@ -125,17 +120,10 @@ export async function POST(req: NextRequest) {
             createdBy: item.createdBy || 'admin'
           };
           batchList.push(record);
-
-          // Save each to Firestore
-          try {
-            await setDoc(doc(db, 'holidays', record.id), record);
-          } catch (cloudErr) {
-            console.warn(`Firestore save error for ${record.id}:`, cloudErr);
-          }
         }
       }
 
-      // Update local cache
+      // Update file storage atomically
       const current = getStoredFileHolidays();
       const map = new Map<string, HolidayRecord>();
       current.forEach(h => map.set(h.id, h));
@@ -148,6 +136,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Single holiday item
     if (!payload.title || !payload.startDate || !payload.endDate) {
       return NextResponse.json({ error: 'Title, startDate, and endDate are required' }, { status: 400 });
     }
@@ -156,7 +145,7 @@ export async function POST(req: NextRequest) {
     const end = payload.startDate <= payload.endDate ? payload.endDate : payload.startDate;
 
     const newRecord: HolidayRecord = {
-      id: payload.id || `closure-${Date.now()}`,
+      id: payload.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       title: String(payload.title).trim(),
       startDate: start,
       endDate: end,
@@ -166,14 +155,7 @@ export async function POST(req: NextRequest) {
       createdBy: payload.createdBy || 'admin'
     };
 
-    // Save to Firestore
-    try {
-      await setDoc(doc(db, 'holidays', newRecord.id), newRecord);
-    } catch (cloudErr) {
-      console.warn('Firestore setDoc notice in /api/holidays:', cloudErr);
-    }
-
-    // Mirror to local disk cache
+    // Update file storage atomically
     const current = getStoredFileHolidays();
     const updated = [...current.filter(h => h.id !== newRecord.id), newRecord].sort((a, b) => a.startDate.localeCompare(b.startDate));
     saveStoredFileHolidays(updated);
@@ -202,14 +184,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID parameter is required' }, { status: 400 });
     }
 
-    // Delete from Firestore
-    try {
-      await deleteDoc(doc(db, 'holidays', id));
-    } catch (cloudErr) {
-      console.warn('Firestore deleteDoc notice in /api/holidays:', cloudErr);
-    }
-
-    // Mirror to local disk cache
+    // Atomically filter out the holiday from storage
     const current = getStoredFileHolidays();
     const filtered = current.filter(h => h.id !== id);
     saveStoredFileHolidays(filtered);

@@ -400,7 +400,7 @@ export default function BookingPage() {
 
     // 3. Save to server API
     try {
-      await fetch('/api/holidays', {
+      const res = await fetch('/api/holidays', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -409,11 +409,20 @@ export default function BookingPage() {
           createdBy: currentUser?.email || 'admin'
         })
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.holidays)) {
+          setHolidays(data.holidays);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+          } catch (_) {}
+        }
+      }
     } catch (err) {
       console.warn('API save note:', err);
     }
 
-    // 4. Save to Firestore
+    // 4. Save to Firestore if admin has cloud connection
     try {
       await setDoc(doc(db, 'holidays', holidayId), {
         ...newClosure,
@@ -438,7 +447,6 @@ export default function BookingPage() {
     });
 
     const closureId = matching?.id;
-    const closureTitle = matching?.title || 'Clinic Closure';
 
     // Optimistically update
     const updated = matching ? holidays.filter(h => h.id !== matching.id) : holidays;
@@ -460,7 +468,16 @@ export default function BookingPage() {
     if (closureId) {
       // 1. Server API delete
       try {
-        await fetch(`/api/holidays?id=${encodeURIComponent(closureId)}`, { method: 'DELETE' });
+        const res = await fetch(`/api/holidays?id=${encodeURIComponent(closureId)}`, { method: 'DELETE' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
+            try {
+              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+            } catch (_) {}
+          }
+        }
       } catch (err) {
         console.warn('API delete note:', err);
       }

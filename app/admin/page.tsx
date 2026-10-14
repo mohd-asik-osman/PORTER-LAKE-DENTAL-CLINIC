@@ -548,11 +548,20 @@ export default function AdminDashboard() {
 
       // 2. Server API save for universal cross-device persistence
       try {
-        await fetch('/api/holidays', {
+        const res = await fetch('/api/holidays', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(docData)
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
+            try {
+              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+            } catch (_) {}
+          }
+        }
       } catch (apiErr) {
         console.warn('API save note:', apiErr);
       }
@@ -621,7 +630,16 @@ export default function AdminDashboard() {
 
     // 6. Server API delete
     try {
-      await fetch(`/api/holidays?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await fetch(`/api/holidays?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.holidays)) {
+          setHolidays(data.holidays);
+          try {
+            localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+          } catch (_) {}
+        }
+      }
     } catch (apiErr) {
       console.warn('API delete note:', apiErr);
     }
@@ -699,11 +717,20 @@ export default function AdminDashboard() {
 
         // Save batch to server API
         try {
-          await fetch('/api/holidays', {
+          const res = await fetch('/api/holidays', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ holidays: newItems })
           });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.holidays)) {
+              setHolidays(data.holidays);
+              try {
+                localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+              } catch (_) {}
+            }
+          }
         } catch (apiErr) {
           console.warn('API save note for statutory holidays:', apiErr);
         }
@@ -767,11 +794,20 @@ export default function AdminDashboard() {
 
       // Server API save
       try {
-        await fetch('/api/holidays', {
+        const res = await fetch('/api/holidays', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(docData)
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
+            try {
+              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
+            } catch (_) {}
+          }
+        }
       } catch (apiErr) {
         console.warn('API save note for bulk block:', apiErr);
       }
