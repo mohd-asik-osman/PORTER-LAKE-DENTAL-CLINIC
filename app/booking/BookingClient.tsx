@@ -5,14 +5,16 @@ import Link from 'next/link';
 import { 
   Calendar as CalendarIcon, Clock, ChevronLeft, 
   ChevronRight, Heart, CheckCircle2, Loader2,
-  Stethoscope, Sparkles, X, User, Palmtree
+  Stethoscope, Sparkles, X, User, Palmtree,
+  Shield, Lock, Unlock, Plus, AlertCircle
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { AddToCalendar } from '@/components/AddToCalendar';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth-context';
 import { db, auth } from '@/lib/firebase';
-import { doc, setDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { 
   parseClinicDateTime, 
   CLINIC_TIME_ZONE, 
@@ -135,6 +137,19 @@ export default function BookingPage() {
     }
   }, [step]);
 
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Admin fast date block/unblock controls
+  const [isAdminBlockModalOpen, setIsAdminBlockModalOpen] = useState(false);
+  const [adminBlockData, setAdminBlockData] = useState({
+    title: 'Clinic Closure',
+    startDate: '',
+    endDate: '',
+    notes: ''
+  });
+  const [isSubmittingAdminBlock, setIsSubmittingAdminBlock] = useState(false);
+
   // Real-time clinic holidays and closures
   const [holidays, setHolidays] = useState<DynamicHolidayItem[]>([]);
 
@@ -222,12 +237,10 @@ export default function BookingPage() {
       const q = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
       unsubscribeFirestore = onSnapshot(q, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as DynamicHolidayItem));
-        if (list.length > 0) {
-          setHolidays(list);
-          try {
-            localStorage.setItem('dentacare_holidays', JSON.stringify(list));
-          } catch (_) {}
-        }
+        setHolidays(list);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(list));
+        } catch (_) {}
       }, (err) => {
         console.warn('Real-time holidays listener note:', err);
       });
@@ -294,11 +307,27 @@ export default function BookingPage() {
     return false;
   }, [currentYear, currentMonthIndex, initialYear, initialMonth]);
 
+  // Selected date closure details helper
+  const selectedDateClosure = useMemo(() => {
+    if (!selectedDateStr) return null;
+    return holidays.find(h => {
+      const s = h.startDate <= h.endDate ? h.startDate : h.endDate;
+      const e = h.startDate <= h.endDate ? h.endDate : h.startDate;
+      return selectedDateStr >= s && selectedDateStr <= e;
+    }) || null;
+  }, [selectedDateStr, holidays]);
+
+  const isSelectedDateClosed = useMemo(() => {
+    if (!selectedDateStr) return false;
+    return isClinicClosure(selectedDateStr, holidays).isClosed;
+  }, [selectedDateStr, holidays]);
+
   // Date selection with automatic slot compatibility check
   const handleSelectDate = (dateStr: string) => {
-    // Strictly prevent selection of closed days
     const closure = isClinicClosure(dateStr, holidays);
-    if (closure.isClosed) {
+    
+    // For regular patients, strictly prevent selection of closed days
+    if (closure.isClosed && !isAdmin) {
       toast.error(`Clinic is closed on this date (${closure.reason || 'Scheduled Closure'}). Please choose another date.`);
       return;
     }
@@ -306,10 +335,145 @@ export default function BookingPage() {
     setSelectedDateStr(dateStr);
     setSubmitError(null);
 
+    // Clear selected time if the newly selected date is closed
+    if (closure.isClosed) {
+      setSelectedTime('');
+      return;
+    }
+
     // Clear incompatible selected time when the date changes
     if (selectedTime && !isSlotCompatibleWithDate(dateStr, selectedTime, 60, holidays)) {
       setSelectedTime('');
     }
+  };
+
+  const handleOpenAdminBlockModal = (initialDate?: string) => {
+    const targetDate = initialDate || selectedDateStr || todayHalifax;
+    setAdminBlockData({
+      title: 'Scheduled Clinic Closure',
+      startDate: targetDate,
+      endDate: targetDate,
+      notes: ''
+    });
+    setIsAdminBlockModalOpen(true);
+  };
+
+  const handleAdminQuickBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminBlockData.startDate || !adminBlockData.endDate) {
+      toast.error('Please specify start and end dates');
+      return;
+    }
+
+    setIsSubmittingAdminBlock(true);
+    const holidayId = `closure-${Date.now()}`;
+    const start = adminBlockData.startDate <= adminBlockData.endDate ? adminBlockData.startDate : adminBlockData.endDate;
+    const end = adminBlockData.startDate <= adminBlockData.endDate ? adminBlockData.endDate : adminBlockData.startDate;
+
+    const newClosure: DynamicHolidayItem = {
+      id: holidayId,
+      title: adminBlockData.title.trim() || 'Clinic Closure',
+      startDate: start,
+      endDate: end,
+      type: 'closure',
+      notes: adminBlockData.notes.trim() || 'Blocked by Admin from Booking Calendar'
+    };
+
+    // 1. Optimistic local update
+    const currentList = Array.isArray(holidays) ? holidays : [];
+    const updated = [...currentList.filter(h => h.id !== holidayId), newClosure].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    setHolidays(updated);
+    try {
+      localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
+    } catch (_) {}
+
+    // 2. BroadcastChannel
+    try {
+      const channel = new BroadcastChannel('dentacare_clinic_sync');
+      channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
+      channel.close();
+    } catch (_) {}
+
+    try {
+      window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
+    } catch (_) {}
+
+    // 3. Save to server API
+    try {
+      await fetch('/api/holidays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newClosure,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser?.email || 'admin'
+        })
+      });
+    } catch (err) {
+      console.warn('API save note:', err);
+    }
+
+    // 4. Save to Firestore
+    try {
+      await setDoc(doc(db, 'holidays', holidayId), {
+        ...newClosure,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser?.email || 'admin'
+      });
+    } catch (err) {
+      console.warn('Firestore setDoc note:', err);
+    }
+
+    toast.success(`Date ${start === end ? start : `${start} to ${end}`} is now blocked from public booking!`);
+    setIsAdminBlockModalOpen(false);
+    setIsSubmittingAdminBlock(false);
+  };
+
+  const handleAdminQuickUnblock = async (dateStr: string) => {
+    // Find matching closure
+    const matching = holidays.find(h => {
+      const s = h.startDate <= h.endDate ? h.startDate : h.endDate;
+      const e = h.startDate <= h.endDate ? h.endDate : h.startDate;
+      return dateStr >= s && dateStr <= e;
+    });
+
+    const closureId = matching?.id;
+    const closureTitle = matching?.title || 'Clinic Closure';
+
+    // Optimistically update
+    const updated = matching ? holidays.filter(h => h.id !== matching.id) : holidays;
+    setHolidays(updated);
+    try {
+      localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
+    } catch (_) {}
+
+    try {
+      const channel = new BroadcastChannel('dentacare_clinic_sync');
+      channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
+      channel.close();
+    } catch (_) {}
+
+    try {
+      window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
+    } catch (_) {}
+
+    if (closureId) {
+      // 1. Server API delete
+      try {
+        await fetch(`/api/holidays?id=${encodeURIComponent(closureId)}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('API delete note:', err);
+      }
+
+      // 2. Firestore delete
+      try {
+        await deleteDoc(doc(db, 'holidays', closureId));
+      } catch (err) {
+        console.warn('Firestore delete note:', err);
+      }
+    }
+
+    toast.success(`Date ${dateStr} has been unblocked! Appointment booking is now open.`);
   };
 
   const validateStep3 = () => {
@@ -530,6 +694,42 @@ export default function BookingPage() {
                 <button onClick={() => setStep(1)} className="text-xs sm:text-sm font-bold text-slate-400 hover:text-blue-600 shrink-0">Change Service</button>
               </div>
 
+              {/* Admin Quick Control Banner */}
+              {isAdmin && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border-2 border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+                  <div className="flex items-start sm:items-center space-x-3">
+                    <div className="p-2 bg-purple-600 text-white rounded-xl shrink-0 shadow-md shadow-purple-200">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-purple-950 text-sm">Administrator Live Controls</span>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-200 text-purple-800 text-[10px] font-bold">Admin Active</span>
+                      </div>
+                      <p className="text-purple-700 mt-0.5">
+                        Logged in as <strong>{currentUser?.email}</strong>. You can block or unblock any date directly on this calendar.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAdminBlockModal()}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center space-x-1.5 transition-all text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Block a Date</span>
+                    </button>
+                    <Link
+                      href="/admin"
+                      className="px-3.5 py-2 bg-white hover:bg-slate-50 text-purple-700 border border-purple-200 rounded-xl font-bold transition-all text-xs"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               {/* Clinic Closures Banner if any in this month */}
               {currentMonthClosures.length > 0 && (
                 <div className="mb-6 p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-start space-x-3 text-xs text-amber-900">
@@ -598,10 +798,10 @@ export default function BookingPage() {
 
                     {calendarData.days.map((day) => {
                       const isSelected = selectedDateStr === day.dateStr;
-                      const isDisabled = day.isPast || day.isWeekend || day.isClosed;
+                      const isDisabled = isAdmin ? (day.isPast || day.isWeekend) : (day.isPast || day.isWeekend || day.isClosed);
                       
                       let statusNote = '';
-                      if (day.isClosed) statusNote = `Clinic Closed: ${day.closureReason || 'Scheduled Closure'}`;
+                      if (day.isClosed) statusNote = `Clinic Closed: ${day.closureReason || 'Scheduled Closure'}${isAdmin ? ' (Click to manage/unblock)' : ''}`;
                       else if (day.isWeekend) statusNote = 'Closed (Weekend)';
                       else if (day.isPast) statusNote = 'Past date';
 
@@ -618,7 +818,11 @@ export default function BookingPage() {
                           aria-pressed={isSelected}
                           className={`min-h-[40px] sm:min-h-[44px] aspect-square rounded-lg sm:rounded-xl flex flex-col items-center justify-center text-xs sm:text-sm font-medium transition-all focus:ring-2 focus:ring-blue-500 outline-none relative ${
                             day.isClosed
-                              ? 'bg-rose-50/90 text-rose-500 border border-rose-200 cursor-not-allowed hover:bg-rose-50'
+                              ? isSelected
+                                ? 'bg-rose-600 text-white shadow-lg shadow-rose-200 font-bold scale-105 z-10'
+                                : isAdmin
+                                  ? 'bg-rose-50 text-rose-600 border border-rose-300 hover:bg-rose-100/90 cursor-pointer font-bold'
+                                  : 'bg-rose-50/90 text-rose-500 border border-rose-200 cursor-not-allowed hover:bg-rose-50'
                               : isDisabled 
                                 ? 'text-slate-300 bg-slate-50/40 cursor-not-allowed' 
                                 : isSelected 
@@ -628,11 +832,11 @@ export default function BookingPage() {
                                     : 'hover:bg-slate-100 text-slate-700 font-semibold'
                           }`}
                         >
-                          <span className={day.isClosed ? 'line-through text-rose-500 font-bold' : ''}>
+                          <span className={day.isClosed ? (isSelected ? 'font-black' : 'line-through text-rose-500 font-bold') : ''}>
                             {day.dayNumber}
                           </span>
                           {day.isClosed && (
-                            <span className="text-[8px] font-black uppercase tracking-tighter text-rose-600 leading-none mt-0.5">
+                            <span className={`text-[8px] font-black uppercase tracking-tighter leading-none mt-0.5 ${isSelected ? 'text-white' : 'text-rose-600'}`}>
                               Closed
                             </span>
                           )}
@@ -663,14 +867,22 @@ export default function BookingPage() {
                       <span>Weekend / Past</span>
                     </span>
                   </div>
+
+                  {!isAdmin && (
+                    <div className="mt-4 text-center">
+                      <Link href="/auth" className="text-[11px] text-slate-400 hover:text-blue-600 font-medium transition-colors">
+                        Clinic staff or administrator? Sign in to manage dates and closures.
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
-                {/* Time Slots */}
+                {/* Time Slots & Closure Details */}
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4 sm:mb-6">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                      <span>Available Slots</span>
+                      <span>{isSelectedDateClosed ? 'Closure Details' : 'Available Slots'}</span>
                     </h3>
                     <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg inline-block w-fit">
                       All times in Halifax time (AST/ADT)
@@ -685,6 +897,47 @@ export default function BookingPage() {
                         Please choose an open weekday on the calendar to view available clinic hours and time slots.
                       </p>
                     </div>
+                  ) : isSelectedDateClosed ? (
+                    <div className="rounded-2xl border-2 border-rose-200 p-6 bg-rose-50/80 text-rose-950 space-y-4">
+                      <div className="flex items-start space-x-3.5">
+                        <div className="p-2.5 bg-rose-500 text-white rounded-xl shadow-md shadow-rose-200 shrink-0">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">
+                            Clinic Closed
+                          </span>
+                          <h4 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
+                            {selectedDateClosure?.title || isClinicClosure(selectedDateStr, holidays).reason || 'Clinic Closure'}
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            Date: <strong className="text-slate-900">{formatClinicDateTime(`${selectedDateStr}T12:00:00`, 'EEEE, MMMM d, yyyy')}</strong>
+                          </p>
+                          {selectedDateClosure?.notes && (
+                            <p className="text-xs text-slate-500 mt-2 bg-white/70 p-2.5 rounded-lg border border-rose-100 italic">
+                              &ldquo;{selectedDateClosure.notes}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {isAdmin ? (
+                        <div className="pt-3 border-t border-rose-200 flex flex-col sm:flex-row gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAdminQuickUnblock(selectedDateStr)}
+                            className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 transition-all flex items-center justify-center space-x-2"
+                          >
+                            <Unlock className="w-4 h-4" />
+                            <span>Unblock This Date (Open Booking)</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-rose-700 font-medium">
+                          The clinic is unavailable on this date. Please select another date on the calendar.
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       <div className="px-3.5 py-2.5 bg-blue-50/90 border border-blue-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
@@ -695,6 +948,22 @@ export default function BookingPage() {
                           Hours: {getClinicHoursForDate(selectedDateStr).hoursDisplay}
                         </span>
                       </div>
+
+                      {isAdmin && (
+                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2 text-xs text-purple-900">
+                            <Lock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                            <span>Need to close this clinic day?</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAdminBlockModal(selectedDateStr)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-purple-200 transition-all shrink-0"
+                          >
+                            Block This Day
+                          </button>
+                        </div>
+                      )}
 
                       {availableSlots.filter(s => s.available).length === 0 ? (
                         <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center text-xs text-amber-800">
@@ -1014,6 +1283,124 @@ export default function BookingPage() {
                   Book Another Appointment
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Admin Quick Block Modal */}
+        {isAdminBlockModalOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div 
+              onClick={() => setIsAdminBlockModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
+              aria-hidden="true"
+            />
+            <div 
+              className="relative w-full max-w-lg glass p-6 sm:p-8 rounded-3xl sm:rounded-[36px] shadow-2xl border border-white/40 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="block-modal-title"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-purple-600 text-white rounded-2xl shadow-md shadow-purple-200">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 id="block-modal-title" className="text-lg font-bold text-slate-900">Block Clinic Date</h3>
+                    <p className="text-xs text-slate-500">Close dates so patients cannot book appointments.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminBlockModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAdminQuickBlock} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-1">
+                    Closure Reason / Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={adminBlockData.title}
+                    onChange={(e) => setAdminBlockData({ ...adminBlockData, title: e.target.value })}
+                    placeholder="e.g. Clinic Closed, Staff Training, Emergency"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-1">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={adminBlockData.startDate}
+                      onChange={(e) => setAdminBlockData({ ...adminBlockData, startDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-1">
+                      End Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={adminBlockData.endDate}
+                      onChange={(e) => setAdminBlockData({ ...adminBlockData, endDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-1">
+                    Internal Notes (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={adminBlockData.notes}
+                    onChange={(e) => setAdminBlockData({ ...adminBlockData, notes: e.target.value })}
+                    placeholder="Add any specific instructions for staff or patients..."
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminBlockModalOpen(false)}
+                    className="px-4 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl text-xs transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingAdminBlock}
+                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md shadow-purple-200 flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                  >
+                    {isSubmittingAdminBlock ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Confirm & Block Date</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

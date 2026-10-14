@@ -35,18 +35,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (user) {
         try {
+          const emailLower = (user.email || '').trim().toLowerCase();
+          const isSuperAdmin = emailLower === 'asikosman010@gmail.com' ||
+                               emailLower === 'admin@porterslakedental.com' ||
+                               emailLower === 'dentist@bellaliant.com' ||
+                               emailLower.endsWith('@porterslakedental.com');
+
           // Fetch additional profile data from Firestore
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           
           if (userDoc.exists()) {
-            setCurrentUser(userDoc.data() as UserProfile);
+            const data = userDoc.data() as UserProfile;
+            if (isSuperAdmin && data.role !== 'admin') {
+              const updatedProfile = { ...data, role: 'admin' as Role };
+              try {
+                await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true });
+              } catch (_) {}
+              setCurrentUser(updatedProfile);
+            } else {
+              setCurrentUser(data);
+            }
           } else {
             // Create a default profile if it doesn't exist
             const newProfile: UserProfile = {
               id: user.uid,
-              name: user.displayName || 'User',
+              name: user.displayName || (isSuperAdmin ? 'Administrator' : 'User'),
               email: user.email || '',
-              role: (user.email === 'asikosman010@gmail.com' || user.email === 'admin@porterslakedental.com' || user.email === 'dentist@bellaliant.com') ? 'admin' : 'user'
+              role: isSuperAdmin ? 'admin' : 'user'
             };
             await setDoc(doc(db, 'users', user.uid), newProfile);
             setCurrentUser(newProfile);

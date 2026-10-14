@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix the holiday deletion bug in the Admin Panel (caused by blocked window.confirm() in iframe), ensure immediate single-click deletion with clear visual loading and toast feedback, and sync real-time holiday deletion across both Admin overview/closures and patient booking availability.",
-  "updatedAt": "2026-10-14T14:05:44.738759220Z",
+  "summary": "Implementation plan to fix clinic day blocking and date closures synchronization on the public live site. Details root cause of ephemeral container file writes vs Firestore persistence, unified Firestore cloud synchronization for both public booking and admin panel, resilient error reporting, and real-time public calendar updates.",
+  "updatedAt": "2026-10-14T14:34:10.338269312Z",
   "requestFeedback": true,
   "userFacing": true
 }

@@ -240,12 +240,10 @@ export default function AdminDashboard() {
       const holidaysQuery = query(collection(db, 'holidays'), orderBy('startDate', 'asc'));
       unsubscribeHolidays = onSnapshot(holidaysQuery, (snapshot) => {
         const holidaysData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        if (holidaysData.length > 0) {
-          setHolidays(holidaysData);
-          try {
-            localStorage.setItem('dentacare_holidays', JSON.stringify(holidaysData));
-          } catch (_) {}
-        }
+        setHolidays(holidaysData);
+        try {
+          localStorage.setItem('dentacare_holidays', JSON.stringify(holidaysData));
+        } catch (_) {}
       }, (error) => {
         console.warn('Real-time holidays listener note:', error);
       });

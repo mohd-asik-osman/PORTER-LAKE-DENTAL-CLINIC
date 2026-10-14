@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // Designated super-admin emails verified from auth token
     function isSuperAdminEmail() {
-      return isAuthenticated() && 
+      return isAuthenticated() && request.auth.token.email != null &&
         (request.auth.token.email == "asikosman010@gmail.com" ||
          request.auth.token.email == "admin@porterslakedental.com" ||
          request.auth.token.email == "dentist@bellaliant.com");

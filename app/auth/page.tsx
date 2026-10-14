@@ -50,16 +50,26 @@ export default function AuthPage() {
     setError('');
     setSuccess('');
 
-    const isAdminEmail = formData.email === 'admin@porterslakedental.com' || formData.email === 'asikosman010@gmail.com' || formData.email === 'dentist@bellaliant.com';
+    const trimmedEmail = formData.email.trim().toLowerCase();
+    const isAdminEmail = trimmedEmail === 'admin@porterslakedental.com' || 
+                         trimmedEmail === 'asikosman010@gmail.com' || 
+                         trimmedEmail === 'dentist@bellaliant.com' ||
+                         trimmedEmail.endsWith('@porterslakedental.com');
 
     try {
       // 1. Attempt Sign In
-      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, formData.password);
       
       // 2. Fetch or Create Profile
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
       if (userDoc.exists()) {
-        if (userDoc.data()?.role === 'admin') {
+        const userData = userDoc.data();
+        if (userData?.role === 'admin' || isAdminEmail) {
+          if (isAdminEmail && userData?.role !== 'admin') {
+            try {
+              await setDoc(doc(db, 'users', userCredential.user.uid), { role: 'admin' }, { merge: true });
+            } catch (_) {}
+          }
           console.log('Admin login successful');
           router.push('/admin');
         } else {
@@ -70,7 +80,7 @@ export default function AuthPage() {
         const newProfile: UserProfile = {
           id: userCredential.user.uid,
           name: userCredential.user.displayName || 'Administrator',
-          email: formData.email,
+          email: trimmedEmail,
           role: 'admin'
         };
         await setDoc(doc(db, 'users', userCredential.user.uid), newProfile);
