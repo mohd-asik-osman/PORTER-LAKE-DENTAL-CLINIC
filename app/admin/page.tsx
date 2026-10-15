@@ -1660,7 +1660,7 @@ export default function AdminDashboard() {
                               key={slot.label} 
                               className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-white/15 shadow-inner flex flex-col justify-center"
                             >
-                              <span className="text-2xl sm:text-3xl font-mono font-black text-amber-300 tracking-tight leading-none">
+                              <span suppressHydrationWarning className="text-2xl sm:text-3xl font-mono font-black text-amber-300 tracking-tight leading-none">
                                 {String(slot.value).padStart(2, '0')}
                               </span>
                               <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-300 mt-1">

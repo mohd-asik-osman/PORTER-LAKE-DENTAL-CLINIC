@@ -13,6 +13,7 @@ import { Footer } from '@/components/Footer';
 import { AddToCalendar } from '@/components/AddToCalendar';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
+import { useMounted } from '@/hooks/use-mounted';
 import { db, auth } from '@/lib/firebase';
 import { doc, setDoc, deleteDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { 
@@ -139,6 +140,8 @@ export default function BookingPage() {
 
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+  const isMounted = useMounted();
+  const showAdminControls = isMounted && isAdmin;
 
   // Admin fast date block/unblock controls
   const [isAdminBlockModalOpen, setIsAdminBlockModalOpen] = useState(false);
@@ -721,7 +724,7 @@ export default function BookingPage() {
               </div>
 
               {/* Admin Quick Control Banner */}
-              {isAdmin && (
+              {showAdminControls && (
                 <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border-2 border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
                   <div className="flex items-start sm:items-center space-x-3">
                     <div className="p-2 bg-purple-600 text-white rounded-xl shrink-0 shadow-md shadow-purple-200">
@@ -824,10 +827,10 @@ export default function BookingPage() {
 
                     {calendarData.days.map((day) => {
                       const isSelected = selectedDateStr === day.dateStr;
-                      const isDisabled = isAdmin ? (day.isPast || day.isWeekend) : (day.isPast || day.isWeekend || day.isClosed);
+                      const isDisabled = showAdminControls ? (day.isPast || day.isWeekend) : (day.isPast || day.isWeekend || day.isClosed);
                       
                       let statusNote = '';
-                      if (day.isClosed) statusNote = `Clinic Closed: ${day.closureReason || 'Scheduled Closure'}${isAdmin ? ' (Click to manage/unblock)' : ''}`;
+                      if (day.isClosed) statusNote = `Clinic Closed: ${day.closureReason || 'Scheduled Closure'}${showAdminControls ? ' (Click to manage/unblock)' : ''}`;
                       else if (day.isWeekend) statusNote = 'Closed (Weekend)';
                       else if (day.isPast) statusNote = 'Past date';
 
@@ -846,7 +849,7 @@ export default function BookingPage() {
                             day.isClosed
                               ? isSelected
                                 ? 'bg-rose-600 text-white shadow-lg shadow-rose-200 font-bold scale-105 z-10'
-                                : isAdmin
+                                : showAdminControls
                                   ? 'bg-rose-50 text-rose-600 border border-rose-300 hover:bg-rose-100/90 cursor-pointer font-bold'
                                   : 'bg-rose-50/90 text-rose-500 border border-rose-200 cursor-not-allowed hover:bg-rose-50'
                               : isDisabled 
@@ -894,7 +897,7 @@ export default function BookingPage() {
                     </span>
                   </div>
 
-                  {!isAdmin && (
+                  {!showAdminControls && (
                     <div className="mt-4 text-center">
                       <Link href="/auth" className="text-[11px] text-slate-400 hover:text-blue-600 font-medium transition-colors">
                         Clinic staff or administrator? Sign in to manage dates and closures.
@@ -947,7 +950,7 @@ export default function BookingPage() {
                         </div>
                       </div>
 
-                      {isAdmin ? (
+                      {showAdminControls ? (
                         <div className="pt-3 border-t border-rose-200 flex flex-col sm:flex-row gap-2">
                           <button
                             type="button"
@@ -975,7 +978,7 @@ export default function BookingPage() {
                         </span>
                       </div>
 
-                      {isAdmin && (
+                      {showAdminControls && (
                         <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-2">
                           <div className="flex items-center space-x-2 text-xs text-purple-900">
                             <Lock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
@@ -1313,7 +1316,7 @@ export default function BookingPage() {
           </div>
         )}
         {/* Admin Quick Block Modal */}
-        {isAdminBlockModalOpen && (
+        {showAdminControls && isAdminBlockModalOpen && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <div 
               onClick={() => setIsAdminBlockModalOpen(false)}

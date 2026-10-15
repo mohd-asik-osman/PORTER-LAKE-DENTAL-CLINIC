@@ -25,18 +25,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('dentacare_admin_profile');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.role === 'admin') return parsed;
-        }
-      } catch (_) {}
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -96,11 +85,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Error fetching user profile:', error);
         }
       } else {
-        // If Firebase Auth has no user, keep cached admin if explicitly active, or reset
-        const cached = typeof window !== 'undefined' ? localStorage.getItem('dentacare_admin_profile') : null;
-        if (!cached) {
-          setCurrentUser(null);
-        }
+        // If Firebase Auth has no active user, check if an admin session was saved locally
+        try {
+          const cached = localStorage.getItem('dentacare_admin_profile');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.role === 'admin') {
+              setCurrentUser(parsed);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (_) {}
+        setCurrentUser(null);
       }
       
       setIsLoading(false);

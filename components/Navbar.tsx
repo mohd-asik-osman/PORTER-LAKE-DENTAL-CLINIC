@@ -7,10 +7,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, LogOut, LayoutDashboard, Facebook, Instagram, MapPin, Phone, Calendar, Mail } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/lib/auth-context';
+import { useMounted } from '@/hooks/use-mounted';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const mounted = useMounted();
   const { currentUser, logout } = useAuth();
+  const isAdmin = mounted && currentUser?.role === 'admin';
 
   return (
     <>
@@ -149,7 +152,7 @@ export const Navbar = () => {
                 </a>
               </div>
               
-              {currentUser && currentUser.role === 'admin' ? (
+              {isAdmin ? (
                 <div className="flex items-center space-x-2">
                   <Link 
                     href="/admin" 
@@ -182,7 +185,7 @@ export const Navbar = () => {
 
           {/* Mobile Toggle & Actions */}
           <div className="md:hidden flex items-center space-x-2">
-            {!currentUser || currentUser.role !== 'admin' ? (
+            {!isAdmin ? (
               <Link 
                 href="/booking" 
                 className="flex items-center space-x-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-bold shadow-md shadow-blue-200 active:scale-95 transition-all shrink-0"
@@ -287,7 +290,7 @@ export const Navbar = () => {
                 </a>
               </div>
 
-              {currentUser && currentUser.role === 'admin' ? (
+              {isAdmin ? (
                 <Link href="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-3 min-h-[44px] flex items-center text-base font-medium text-blue-600">Admin Panel</Link>
               ) : (
                 <Link 
