@@ -27,7 +27,8 @@ import {
   isClinicClosure,
   getHalifaxTodayDateStr,
   isPastDateInHalifax,
-  DynamicHolidayItem
+  DynamicHolidayItem,
+  formatToYYYYMMDD
 } from '@/lib/calendar';
 
 enum OperationType {
@@ -169,21 +170,24 @@ export default function BookingPage() {
     } catch (_) {}
 
     // 2. Fetch from server API endpoint to guarantee latest closures across all devices
-    const fetchHolidays = () => {
-      fetch('/api/holidays')
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && Array.isArray(data.holidays)) {
+    const fetchBlockedDates = async () => {
+      try {
+        const res = await fetch('/api/holidays');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.holidays && Array.isArray(data.holidays)) {
             setHolidays(data.holidays);
             try {
               localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
             } catch (_) {}
           }
-        })
-        .catch(err => console.warn('Could not fetch /api/holidays:', err));
+        }
+      } catch (error) {
+        console.error('Error fetching holidays:', error);
+      }
     };
 
-    fetchHolidays();
+    fetchBlockedDates();
 
     // 3. Real-time BroadcastChannel: instant (1ms) sync when admin deletes or adds closures
     let channel: BroadcastChannel | null = null;
@@ -327,15 +331,16 @@ export default function BookingPage() {
 
   // Date selection with automatic slot compatibility check
   const handleSelectDate = (dateStr: string) => {
-    const closure = isClinicClosure(dateStr, holidays);
+    const formattedDateStr = formatToYYYYMMDD(dateStr);
+    const closure = isClinicClosure(formattedDateStr, holidays);
     
     // For regular patients, strictly prevent selection of closed days
-    if (closure.isClosed && !isAdmin) {
+    if (closure.isClosed && !showAdminControls) {
       toast.error(`Clinic is closed on this date (${closure.reason || 'Scheduled Closure'}). Please choose another date.`);
       return;
     }
 
-    setSelectedDateStr(dateStr);
+    setSelectedDateStr(formattedDateStr);
     setSubmitError(null);
 
     // Clear selected time if the newly selected date is closed

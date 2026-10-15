@@ -137,6 +137,11 @@ export async function GET() {
   }
 }
 
+function formatToYYYYMMDD(str: string): string {
+  if (!str) return '';
+  return str.split('T')[0].trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
@@ -146,8 +151,10 @@ export async function POST(req: NextRequest) {
       const batchList: HolidayRecord[] = [];
       for (const item of payload.holidays) {
         if (item.title && item.startDate && item.endDate) {
-          const start = item.startDate <= item.endDate ? item.startDate : item.endDate;
-          const end = item.startDate <= item.endDate ? item.endDate : item.startDate;
+          const rawStart = formatToYYYYMMDD(item.startDate);
+          const rawEnd = formatToYYYYMMDD(item.endDate);
+          const start = rawStart <= rawEnd ? rawStart : rawEnd;
+          const end = rawStart <= rawEnd ? rawEnd : rawStart;
           const record: HolidayRecord = {
             id: item.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             title: String(item.title).trim(),
@@ -180,8 +187,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title, startDate, and endDate are required' }, { status: 400 });
     }
 
-    const start = payload.startDate <= payload.endDate ? payload.startDate : payload.endDate;
-    const end = payload.startDate <= payload.endDate ? payload.endDate : payload.startDate;
+    const rawStart = formatToYYYYMMDD(payload.startDate);
+    const rawEnd = formatToYYYYMMDD(payload.endDate);
+    const start = rawStart <= rawEnd ? rawStart : rawEnd;
+    const end = rawStart <= rawEnd ? rawEnd : rawStart;
 
     const newRecord: HolidayRecord = {
       id: payload.id || `closure-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -203,8 +212,8 @@ export async function POST(req: NextRequest) {
       headers: { 'Cache-Control': 'no-store, max-age=0' }
     });
   } catch (err) {
-    console.error('Error adding holiday:', err);
-    return NextResponse.json({ success: true, holidays: inMemoryHolidays }, { status: 200 });
+    console.error('Error saving holiday:', err);
+    return NextResponse.json({ success: false, error: 'Failed to save holiday record' }, { status: 500 });
   }
 }
 
@@ -233,6 +242,6 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (err) {
     console.error('Error deleting holiday:', err);
-    return NextResponse.json({ success: true, removedId: '', holidays: inMemoryHolidays }, { status: 200 });
+    return NextResponse.json({ success: false, error: 'Failed to delete holiday record' }, { status: 500 });
   }
 }

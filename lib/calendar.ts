@@ -156,6 +156,14 @@ export interface DynamicHolidayItem {
 }
 
 /**
+ * Normalizes date strings to strict YYYY-MM-DD format (stripping any time/T substrings)
+ */
+export const formatToYYYYMMDD = (str: string): string => {
+  if (!str) return '';
+  return str.split('T')[0].trim();
+};
+
+/**
  * Checks if a date is a configured clinic holiday or closure
  */
 export function isClinicClosure(
@@ -163,32 +171,35 @@ export function isClinicClosure(
   dynamicClosures?: DynamicHolidayItem[] | Record<string, string>
 ): { isClosed: boolean; reason?: string } {
   if (!dateStr) return { isClosed: false };
+  const targetDate = formatToYYYYMMDD(dateStr);
   
   // Check exact full date YYYY-MM-DD in static config
-  if (CONFIGURED_CLINIC_CLOSURES[dateStr]) {
-    return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[dateStr] };
+  if (CONFIGURED_CLINIC_CLOSURES[targetDate]) {
+    return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[targetDate] };
   }
 
   // Check recurring annual MM-DD in static config
-  const mmdd = dateStr.slice(5); // e.g. "12-25"
+  const mmdd = targetDate.slice(5); // e.g. "12-25"
   if (CONFIGURED_CLINIC_CLOSURES[mmdd]) {
     return { isClosed: true, reason: CONFIGURED_CLINIC_CLOSURES[mmdd] };
   }
 
-  // Check dynamic closures from Firestore
+  // Check dynamic closures from Firestore or API
   if (dynamicClosures) {
     if (Array.isArray(dynamicClosures)) {
       for (const item of dynamicClosures) {
         if (!item.startDate || !item.endDate) continue;
-        const start = item.startDate <= item.endDate ? item.startDate : item.endDate;
-        const end = item.startDate <= item.endDate ? item.endDate : item.startDate;
-        if (dateStr >= start && dateStr <= end) {
+        const rawStart = formatToYYYYMMDD(item.startDate);
+        const rawEnd = formatToYYYYMMDD(item.endDate);
+        const start = rawStart <= rawEnd ? rawStart : rawEnd;
+        const end = rawStart <= rawEnd ? rawEnd : rawStart;
+        if (targetDate >= start && targetDate <= end) {
           return { isClosed: true, reason: item.title || 'Clinic Closure' };
         }
       }
     } else if (typeof dynamicClosures === 'object') {
-      if (dynamicClosures[dateStr]) {
-        return { isClosed: true, reason: dynamicClosures[dateStr] };
+      if (dynamicClosures[targetDate]) {
+        return { isClosed: true, reason: dynamicClosures[targetDate] };
       }
     }
   }
