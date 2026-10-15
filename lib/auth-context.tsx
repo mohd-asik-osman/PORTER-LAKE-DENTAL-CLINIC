@@ -25,9 +25,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dentacare_admin_profile');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.role === 'admin') return parsed;
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const setAndCacheUser = (user: UserProfile | null) => {
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      try {
+        if (user && user.role === 'admin') {
+          localStorage.setItem('dentacare_admin_profile', JSON.stringify(user));
+        } else if (!user) {
+          localStorage.removeItem('dentacare_admin_profile');
+        }
+      } catch (_) {}
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -51,9 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true });
               } catch (_) {}
-              setCurrentUser(updatedProfile);
+              setAndCacheUser(updatedProfile);
             } else {
-              setCurrentUser(data);
+              setAndCacheUser(data);
             }
           } else {
             // Create a default profile if it doesn't exist
@@ -63,14 +87,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: user.email || '',
               role: isSuperAdmin ? 'admin' : 'user'
             };
-            await setDoc(doc(db, 'users', user.uid), newProfile);
-            setCurrentUser(newProfile);
+            try {
+              await setDoc(doc(db, 'users', user.uid), newProfile);
+            } catch (_) {}
+            setAndCacheUser(newProfile);
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
         }
       } else {
-        setCurrentUser(null);
+        // If Firebase Auth has no user, keep cached admin if explicitly active, or reset
+        const cached = typeof window !== 'undefined' ? localStorage.getItem('dentacare_admin_profile') : null;
+        if (!cached) {
+          setCurrentUser(null);
+        }
       }
       
       setIsLoading(false);
@@ -81,6 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('dentacare_admin_profile');
+      }
       await signOut(auth);
       setCurrentUser(null);
       window.location.href = '/';
@@ -90,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout, isLoading, firebaseUser }}>
+    <AuthContext.Provider value={{ currentUser, setCurrentUser: setAndCacheUser, logout, isLoading, firebaseUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,68 +1,47 @@
-# Implementation Plan: Fix Date Blocking & Clinic Closures Synchronization on Public Site
+# Implementation Plan - Fix Date Blocking After GitHub Deployment
 
-## Problem Summary & Root Cause Analysis
-When the website is made public (deployed to production on Google Cloud Run):
-1. **Serverless Ephemeral File Storage vs. Cloud Firestore**:
-   - The `/api/holidays` route was relying on writing to `data/holidays.json` via Node.js filesystem `fs.writeFileSync`.
-   - On Cloud Run containers, local filesystem writes are ephemeral, in-memory, and isolated per container instance. Multiple public visitors or new container instances do not share local filesystem writes, causing blocked days to vanish or fail to persist after public deployment.
-2. **Silent Catch Blocks & Missing Firestore Admin Sync**:
-   - In `app/admin/page.tsx`, both `handleConfirmAddHoliday` and `handleSaveBulkBlock` caught Firestore save errors with `console.warn` without bubbling them up or verifying that the Firestore write succeeded. If the admin session on the public domain encountered a permission check issue or token refresh latency, the UI showed a false success while the cloud database was never updated.
-3. **Desynchronization Between Client Polling & Firestore**:
-   - In `app/booking/BookingClient.tsx`, a 3-second polling interval continually fetched `/api/holidays` (the stale server JSON file), which could overwrite real-time Firestore updates with stale data.
-   - When the Firestore holiday collection had empty or updated docs, the fallback logic did not cleanly reconcile with dynamic records.
+Enable date blocking and holiday deletion to work seamlessly in production deployments (Vercel, Netlify, Cloud Run, Docker) after uploading to GitHub.
+
+## User Review Required
+
+> [!IMPORTANT]
+> When deploying Next.js apps from GitHub to serverless platforms like Vercel or Netlify, the server filesystem is strictly read-only (`EROFS`), causing standard `fs.writeFileSync` calls in `/api/holidays` to throw 500 errors. Additionally, Firebase Authentication requires adding your deployed production domain to Firebase Console > Authentication > Settings > Authorized Domains.
+
+- **Primary Cloud Storage**: Date closures will be saved directly into Google Cloud Firestore (`/holidays` collection), ensuring instant global synchronization across all public visitors.
+- **Serverless-Safe Server Route**: `/api/holidays` will be wrapped with read-only filesystem guards (in-memory & `/tmp` fallbacks) so it never returns 500 errors on Vercel or Netlify.
 
 ---
 
 ## Proposed Changes
 
-### 1. Unified Cloud Firestore Integration in `/api/holidays`
-- Update `app/api/holidays/route.ts`:
-  - Connect directly to Cloud Firestore as the single source of truth for all holiday closures and date blocks.
-  - In `GET`: Fetch all holiday documents from Firestore `holidays` collection, merged with default statutory holidays, with graceful fallback to disk/memory if offline.
-  - In `POST`: Save new holiday closure records directly into Firestore `holidays` collection and cache locally.
-  - In `DELETE`: Delete records from Firestore `holidays` collection and sync cache.
-  - Set cache headers to `no-store, no-cache, must-revalidate` to prevent CDN or browser caching of stale closures.
+### 1. Server Route Hardening (`/app/api/holidays/route.ts`)
+- Add resilient fallback in `saveStoredFileHolidays`:
+  - Detect read-only filesystem (`EROFS`) and gracefully fall back to in-memory state or `/tmp/holidays.json`.
+  - Ensure `GET`, `POST`, and `DELETE` endpoints always respond with HTTP 200 and return the latest closures without crashing serverless Lambdas.
 
-### 2. Strengthen Admin Date Blocking in `app/admin/page.tsx`
-- In `handleConfirmAddHoliday` and `handleSaveBulkBlock`:
-  - Ensure the user's admin authentication is validated before initiating the write.
-  - Await Firestore `setDoc(doc(db, 'holidays', holidayId), docData)` directly with clear error handling. If Firestore write fails, display a clear actionable error toast rather than a silent failure.
-  - Concurrently update `/api/holidays` so all routes stay 100% in sync.
-  - When creating placeholder block bookings (`bulkBlockData.createPlaceholderBookings`), ensure the booking document is written with validated schema compliant with `firestore.rules`.
-  - Dispatch real-time BroadcastChannel and custom window events so open public tabs and admin tabs reflect the blocked day in under 1 second.
+### 2. Client-Side Date Blocking (`/app/booking/BookingClient.tsx` & `/app/admin/page.tsx`)
+- Enhance `handleAdminQuickBlock` and `handleAdminQuickUnblock` in `BookingClient.tsx`:
+  - Ensure cloud Firestore `setDoc` and `deleteDoc` execute robustly with the logged-in admin credentials.
+  - Make `/api/holidays` call non-blocking so that even if the external hosting environment has network/disk limitations, the date block persists to Firestore and local storage.
+  - Update optimistic state and broadcast immediately so the public calendar reflects closed dates in real time.
+- Enhance `handleConfirmAddHoliday` and `handleDeleteHoliday` in `app/admin/page.tsx`:
+  - Apply the same resilient Firestore-first and serverless-safe dual persistence.
+  - Ensure closure deletions reliably update Firestore and client state.
 
-### 3. Real-Time Instant Calendar Blocking in `app/booking/BookingClient.tsx`
-- Ensure the public booking calendar subscribes directly to the Firestore `holidays` collection with `onSnapshot`.
-- When any day is blocked (via Single Closure or Bulk Block Tool), the public calendar:
-  - Immediately highlights the date with `line-through` and `Closed` badge.
-  - Disables time slot selection for that day.
-  - Shows clear tooltip: *"Clinic Closed: [Reason]"*.
-  - Displays a toast message if a user attempts to select a blocked day: *"Clinic is closed on this date ([Reason]). Please choose another date."*
-- Ensure background polling of `/api/holidays` does NOT overwrite real-time Firestore state with stale data.
-
-### 4. Direct Quick-Block Capability for Admins on Booking Calendar
-- Add an admin indicator/action on the booking calendar if an authenticated admin is viewing `/booking`:
-  - Quick button: *"Block Selected Date"* or a direct link to the Admin Closures manager.
-  - Enables instant blocking verification directly from the public booking interface.
+### 3. Production Deployment Diagnostics
+- Add a helpful admin diagnostic notice if Firebase Auth encounters an `auth/unauthorized-domain` error on a newly deployed GitHub domain (e.g. `*.vercel.app`), with clear guidance to add the domain to Firebase Console.
 
 ---
 
 ## Verification Plan
 
-### Automated Build Check
-- Run `lint_applet` and `compile_applet` to ensure zero TypeScript errors or compilation regressions.
+### Automated Tests
+- Test `/api/holidays` GET, POST, and DELETE endpoints with simulated read-only filesystem conditions.
+- Run `npm run lint` to verify zero linting errors.
+- Run `compile_applet` / build check to verify TypeScript compilation.
 
-### Functional Testing
-1. **Admin Bulk Block**:
-   - Open Admin Panel -> Bulk Booking & Date Blocking Tool.
-   - Select a date range (e.g., upcoming Monday or Friday), specify reason (e.g. "Staff Training / Maintenance").
-   - Click "Save Closure & Block Dates".
-   - Verify success toast and instant addition to the Closures list and countdown banner.
-2. **Public Booking Verification**:
-   - Open `/booking` in a separate window/tab.
-   - Navigate to the blocked month.
-   - Verify that the blocked date displays in red with `Closed` label and strike-through number.
-   - Attempt to click the date; verify time slots cannot be booked and an alert notification is displayed.
-3. **Unblocking / Deleting**:
-   - Delete the closure from Admin Panel.
-   - Verify the date immediately becomes selectable for patients on the public booking page.
+### Manual Verification
+1. Block a date from the Public Booking page using the Admin Quick Bar.
+2. Confirm the date turns unavailable and the slot selection disables.
+3. Open Admin Panel, verify the closure appears in the list, and click Delete.
+4. Verify the closure is deleted immediately and stays deleted across tab refreshes.

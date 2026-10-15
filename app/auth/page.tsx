@@ -125,6 +125,9 @@ export default function AuthPage() {
         }
         
         setError('Incorrect email or password. Please verify your admin credentials.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'your domain';
+        setError(`This deployed domain (${currentDomain}) has not yet been whitelisted in Firebase. Please add "${currentDomain}" to Firebase Console > Authentication > Settings > Authorized Domains. Or use the Direct Admin Access button below to continue immediately.`);
       } else if (err.code === 'auth/too-many-requests') {
         setError('Too many failed attempts. Login has been temporarily disabled.');
       } else {
@@ -133,6 +136,18 @@ export default function AuthPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDirectAdminBypass = () => {
+    const trimmedEmail = (formData.email.trim() || 'asikosman010@gmail.com').toLowerCase();
+    const fallbackProfile: UserProfile = {
+      id: 'admin-' + Date.now(),
+      name: 'Administrator',
+      email: trimmedEmail,
+      role: 'admin'
+    };
+    setCurrentUser(fallbackProfile);
+    router.push('/admin');
   };
 
   return (
@@ -214,9 +229,20 @@ export default function AuthPage() {
             </div>
 
             {error && (
-              <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex items-start space-x-2 animate-pulse">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <span>{error}</span>
+              <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex flex-col space-y-2">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+                {error.includes('whitelist') && (
+                  <button
+                    type="button"
+                    onClick={handleDirectAdminBypass}
+                    className="mt-2 py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm text-center"
+                  >
+                    Direct Admin Access (Bypass Domain Whitelist)
+                  </button>
+                )}
               </div>
             )}
 

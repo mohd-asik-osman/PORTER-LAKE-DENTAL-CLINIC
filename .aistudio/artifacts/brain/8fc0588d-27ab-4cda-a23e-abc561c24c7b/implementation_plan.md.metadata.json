@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix clinic day blocking and date closures synchronization on the public live site. Details root cause of ephemeral container file writes vs Firestore persistence, unified Firestore cloud synchronization for both public booking and admin panel, resilient error reporting, and real-time public calendar updates.",
-  "updatedAt": "2026-10-14T14:34:10.338269312Z",
+  "summary": "Plan to fix date blocking and closure management when deployed from GitHub (serverless read-only filesystem protection, cloud Firestore direct persistence, and production domain resilience).",
+  "updatedAt": "2026-10-15T17:48:37.854510981Z",
   "requestFeedback": true,
   "userFacing": true
 }

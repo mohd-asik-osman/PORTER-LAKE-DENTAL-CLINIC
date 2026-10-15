@@ -429,8 +429,17 @@ export default function BookingPage() {
         createdAt: new Date().toISOString(),
         createdBy: currentUser?.email || 'admin'
       });
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Firestore setDoc note:', err);
+      if (err?.code === 'permission-denied') {
+        toast.info('Date blocked in clinic schedule! Note: Add this website domain to Firebase Console for cloud sync.');
+      }
+    }
+
+    // If the blocked date was currently selected, reset slot selection
+    if (selectedDateStr && selectedDateStr >= start && selectedDateStr <= end) {
+      setSelectedDateStr('');
+      setSelectedTime('');
     }
 
     toast.success(`Date ${start === end ? start : `${start} to ${end}`} is now blocked from public booking!`);
