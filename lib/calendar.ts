@@ -151,8 +151,13 @@ export interface DynamicHolidayItem {
   title: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
+  rangeStart?: string;
+  rangeEnd?: string;
+  rangeGroupId?: string | null;
   type?: 'holiday' | 'closure' | 'maintenance' | string;
   notes?: string;
+  createdAt?: string;
+  createdBy?: string;
 }
 
 /**
@@ -162,6 +167,36 @@ export const formatToYYYYMMDD = (str: string): string => {
   if (!str) return '';
   return str.split('T')[0].trim();
 };
+
+/**
+ * Generates an array of all YYYY-MM-DD date strings between start and end (inclusive)
+ */
+export function getDateRangeArray(startDateStr: string, endDateStr: string): string[] {
+  const normStart = formatToYYYYMMDD(startDateStr);
+  const normEnd = formatToYYYYMMDD(endDateStr);
+  if (!normStart && !normEnd) return [];
+  if (!normStart) return [normEnd];
+  if (!normEnd) return [normStart];
+
+  const start = normStart <= normEnd ? normStart : normEnd;
+  const end = normStart <= normEnd ? normEnd : normStart;
+
+  if (start === end) return [start];
+
+  const dates: string[] = [];
+  const current = new Date(`${start}T12:00:00Z`);
+  const final = new Date(`${end}T12:00:00Z`);
+
+  while (current <= final) {
+    const yyyy = current.getUTCFullYear();
+    const mm = String(current.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(current.getUTCDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return dates;
+}
 
 /**
  * Checks if a date is a configured clinic holiday or closure

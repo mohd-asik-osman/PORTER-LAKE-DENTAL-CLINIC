@@ -20,27 +20,24 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   firebaseUser: User | null;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const SUPER_ADMIN_EMAILS = [
+  'asikosman010@gmail.com'
+];
+
+export function isSuperAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === 'asikosman010@gmail.com';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const setAndCacheUser = (user: UserProfile | null) => {
-    setCurrentUser(user);
-    if (typeof window !== 'undefined') {
-      try {
-        if (user && user.role === 'admin') {
-          localStorage.setItem('dentacare_admin_profile', JSON.stringify(user));
-        } else if (!user) {
-          localStorage.removeItem('dentacare_admin_profile');
-        }
-      } catch (_) {}
-    }
-  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -48,11 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (user) {
         try {
-          const emailLower = (user.email || '').trim().toLowerCase();
-          const isSuperAdmin = emailLower === 'asikosman010@gmail.com' ||
-                               emailLower === 'admin@porterslakedental.com' ||
-                               emailLower === 'dentist@bellaliant.com' ||
-                               emailLower.endsWith('@porterslakedental.com');
+          const isSuperAdmin = isSuperAdminEmail(user.email);
 
           // Fetch additional profile data from Firestore
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -60,43 +53,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
             if (isSuperAdmin && data.role !== 'admin') {
-              const updatedProfile = { ...data, role: 'admin' as Role };
+              const updatedProfile: UserProfile = { ...data, role: 'admin' };
               try {
                 await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true });
               } catch (_) {}
-              setAndCacheUser(updatedProfile);
+              setCurrentUser(updatedProfile);
             } else {
-              setAndCacheUser(data);
+              setCurrentUser(data);
             }
           } else {
-            // Create a default profile if it doesn't exist
+            // Create profile for authenticated user
             const newProfile: UserProfile = {
               id: user.uid,
-              name: user.displayName || (isSuperAdmin ? 'Administrator' : 'User'),
+              name: user.displayName || (isSuperAdmin ? 'Administrator' : 'Patient User'),
               email: user.email || '',
               role: isSuperAdmin ? 'admin' : 'user'
             };
             try {
               await setDoc(doc(db, 'users', user.uid), newProfile);
             } catch (_) {}
-            setAndCacheUser(newProfile);
+            setCurrentUser(newProfile);
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
+          if (isSuperAdminEmail(user.email)) {
+            setCurrentUser({
+              id: user.uid,
+              name: user.displayName || 'Administrator',
+              email: user.email || '',
+              role: 'admin'
+            });
+          }
         }
       } else {
-        // If Firebase Auth has no active user, check if an admin session was saved locally
-        try {
-          const cached = localStorage.getItem('dentacare_admin_profile');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed?.role === 'admin') {
-              setCurrentUser(parsed);
-              setIsLoading(false);
-              return;
-            }
-          }
-        } catch (_) {}
         setCurrentUser(null);
       }
       
@@ -119,8 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isAdmin = !!firebaseUser && (currentUser?.role === 'admin' || isSuperAdminEmail(firebaseUser.email));
+
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser: setAndCacheUser, logout, isLoading, firebaseUser }}>
+    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout, isLoading, firebaseUser, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

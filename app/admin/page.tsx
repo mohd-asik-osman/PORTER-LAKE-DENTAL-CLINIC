@@ -25,7 +25,8 @@ import {
   formatClinicDateTime, 
   isSuspiciousDate,
   getHalifaxTodayDateStr,
-  DynamicHolidayItem,
+  formatToYYYYMMDD,
+  getDateRangeArray,
   CONFIGURED_CLINIC_CLOSURES
 } from '@/lib/calendar';
 import { useAuth } from '@/lib/auth-context';
@@ -510,77 +511,54 @@ export default function AdminDashboard() {
   const handleConfirmAddHoliday = async () => {
     setProcessingId('add-holiday');
     try {
-      const holidayId = crypto.randomUUID();
-      const start = newHolidayData.startDate <= newHolidayData.endDate ? newHolidayData.startDate : newHolidayData.endDate;
-      const end = newHolidayData.startDate <= newHolidayData.endDate ? newHolidayData.endDate : newHolidayData.startDate;
+      const rawStart = formatToYYYYMMDD(newHolidayData.startDate);
+      const rawEnd = formatToYYYYMMDD(newHolidayData.endDate);
+      const start = rawStart <= rawEnd ? rawStart : rawEnd;
+      const end = rawStart <= rawEnd ? rawEnd : rawStart;
       const daysCount = calculateClosureDays(start, end);
+      const dates = getDateRangeArray(start, end);
+      const rangeGroupId = start === end ? null : `range_${start}_${end}`;
 
-      const docData = {
-        id: holidayId,
-        title: newHolidayData.title.trim(),
-        startDate: start,
-        endDate: end,
-        type: newHolidayData.type,
-        notes: newHolidayData.notes.trim(),
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?.email || 'admin'
-      };
+      // 1. Authoritative persistent write: save each day under holidays/YYYY-MM-DD
+      for (const dayStr of dates) {
+        const docData = {
+          id: dayStr,
+          title: newHolidayData.title.trim(),
+          startDate: dayStr,
+          endDate: dayStr,
+          rangeStart: start,
+          rangeEnd: end,
+          rangeGroupId,
+          type: newHolidayData.type,
+          notes: newHolidayData.notes.trim(),
+          createdAt: new Date().toISOString(),
+          createdBy: auth.currentUser?.email || currentUser?.email || 'asikosman010@gmail.com'
+        };
 
-      // 1. Calculate the populated updated list immediately
-      const currentList = Array.isArray(holidays) ? holidays : [];
-      const updated = [...currentList.filter(h => h.id !== holidayId), docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
-      
-      setHolidays(updated);
-      try {
-        localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-      } catch (_) {}
+        await setDoc(doc(db, 'holidays', dayStr), docData);
 
-      // Broadcast instant update across all browser tabs/windows
-      try {
-        const channel = new BroadcastChannel('dentacare_clinic_sync');
-        channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
-        channel.close();
-      } catch (_) {}
-
-      try {
-        window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
-      } catch (_) {}
-
-      // 2. Server API save for universal cross-device persistence
-      try {
-        const res = await fetch('/api/holidays', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(docData)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.holidays)) {
-            setHolidays(data.holidays);
-            try {
-              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
-            } catch (_) {}
-          }
-        }
-      } catch (apiErr) {
-        console.warn('API save note:', apiErr);
-      }
-
-      // 3. Cloud Firestore save
-      try {
-        await setDoc(doc(db, 'holidays', holidayId), docData);
-      } catch (cloudErr) {
-        console.warn('Firestore cloud save note (cached locally):', cloudErr);
+        // Optional secondary API write
+        try {
+          await fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(docData)
+          });
+        } catch (_) {}
       }
 
       setJustConfirmedHoliday({
-        title: docData.title,
+        title: newHolidayData.title.trim(),
         startDate: start,
         endDate: end,
         daysCount
       });
 
-      toast.success(`Clinic closure "${docData.title}" confirmed & scheduled!`);
+      toast.success(
+        dates.length === 1 
+          ? `Clinic closure "${newHolidayData.title}" confirmed & saved to database!`
+          : `All ${dates.length} days for "${newHolidayData.title}" (${start} to ${end}) saved to database!`
+      );
       setIsAddHolidayModalOpen(false);
       setHolidayModalStep('input');
       setNewHolidayData({
@@ -590,67 +568,52 @@ export default function AdminDashboard() {
         type: 'holiday',
         notes: ''
       });
-    } catch (error) {
-      console.error('Failed to add clinic closure:', error);
-      toast.error('Failed to add clinic closure');
+    } catch (error: any) {
+      console.error('Failed to add clinic closure in Firestore:', error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Permission denied: You must be logged into Firebase Auth as asikosman010@gmail.com.');
+      } else {
+        toast.error(`Failed to add clinic closure: ${error?.message || 'Database write error'}`);
+      }
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleDeleteHoliday = async (id: string, title: string) => {
-    // Immediate deletion without window.confirm blocking in iframe
     setProcessingId(id);
-    
-    // 1. Calculate updated list immediately for optimistic UI
-    const updated = holidays.filter(h => h.id !== id);
-    setHolidays(updated);
-
-    // 2. Clear confirmation banner if it matches
-    if (justConfirmedHoliday && justConfirmedHoliday.title === title) {
-      setJustConfirmedHoliday(null);
-    }
-
-    // 3. LocalStorage persistence
     try {
-      localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-    } catch (_) {}
+      // 1. Authoritative delete in Google Cloud Firestore for target date doc
+      await deleteDoc(doc(db, 'holidays', id));
 
-    // 4. Instant BroadcastChannel to update booking system in all open tabs/windows immediately
-    try {
-      const channel = new BroadcastChannel('dentacare_clinic_sync');
-      channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
-      channel.close();
-    } catch (_) {}
-
-    // 5. Custom event for same-window components
-    try {
-      window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
-    } catch (_) {}
-
-    // 6. Server API delete
-    try {
-      const res = await fetch(`/api/holidays?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.holidays)) {
-          setHolidays(data.holidays);
-          try {
-            localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
-          } catch (_) {}
+      // If part of a range group, delete other days in that group
+      const targetDoc = holidays.find(h => h.id === id);
+      if (targetDoc?.rangeGroupId) {
+        const siblings = holidays.filter(h => h.rangeGroupId === targetDoc.rangeGroupId && h.id !== id);
+        for (const sib of siblings) {
+          if (sib.id) {
+            try { await deleteDoc(doc(db, 'holidays', sib.id)); } catch (_) {}
+          }
         }
       }
-    } catch (apiErr) {
-      console.warn('API delete note:', apiErr);
-    }
 
-    // 7. Cloud Firestore delete
-    try {
-      await deleteDoc(doc(db, 'holidays', id));
+      if (justConfirmedHoliday && justConfirmedHoliday.title === title) {
+        setJustConfirmedHoliday(null);
+      }
+
+      // 2. Secondary API delete
+      try {
+        await fetch(`/api/holidays?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      } catch (_) {}
+
       toast.success(`Closure "${title}" removed. Booking calendar updated!`);
-    } catch (error) {
-      console.warn('Cloud delete note:', error);
-      toast.info(`Closure "${title}" removed. Booking calendar updated!`);
+    } catch (error: any) {
+      console.error('Failed to delete closure from Firestore:', error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Permission denied: You must be logged in as an authorized admin to delete closures.');
+      } else {
+        toast.error(`Failed to delete closure: ${error?.message || 'Database error'}`);
+      }
     } finally {
       setProcessingId(null);
     }
@@ -677,22 +640,29 @@ export default function AdminDashboard() {
       let addedCount = 0;
       const newItems: any[] = [];
       for (const h of statutory) {
-        const exists = holidays.some(existing => existing.title === h.title && existing.startDate === h.startDate);
-        if (!exists) {
-          const id = crypto.randomUUID();
-          const item = {
-            id,
-            ...h,
-            createdAt: new Date().toISOString(),
-            createdBy: currentUser?.email || 'admin'
-          };
-          newItems.push(item);
-          try {
-            await setDoc(doc(db, 'holidays', id), item);
-          } catch (cloudErr) {
-            console.warn('Cloud setDoc note:', cloudErr);
+        const dates = getDateRangeArray(h.startDate, h.endDate);
+        const rangeGroupId = dates.length > 1 ? `range_${h.startDate}_${h.endDate}` : null;
+
+        for (const dayStr of dates) {
+          const exists = holidays.some(existing => existing.id === dayStr);
+          if (!exists) {
+            const item = {
+              id: dayStr,
+              title: h.title,
+              startDate: dayStr,
+              endDate: dayStr,
+              rangeStart: h.startDate,
+              rangeEnd: h.endDate,
+              rangeGroupId,
+              type: h.type,
+              notes: h.notes,
+              createdAt: new Date().toISOString(),
+              createdBy: auth.currentUser?.email || currentUser?.email || 'asikosman010@gmail.com'
+            };
+            await setDoc(doc(db, 'holidays', dayStr), item);
+            newItems.push(item);
+            addedCount++;
           }
-          addedCount++;
         }
       }
 
@@ -758,68 +728,44 @@ export default function AdminDashboard() {
 
     setProcessingId('bulk-block');
     try {
-      const holidayId = crypto.randomUUID();
-      const start = bulkBlockData.startDate <= bulkBlockData.endDate ? bulkBlockData.startDate : bulkBlockData.endDate;
-      const end = bulkBlockData.startDate <= bulkBlockData.endDate ? bulkBlockData.endDate : bulkBlockData.startDate;
+      const rawStart = formatToYYYYMMDD(bulkBlockData.startDate);
+      const rawEnd = formatToYYYYMMDD(bulkBlockData.endDate);
+      const start = rawStart <= rawEnd ? rawStart : rawEnd;
+      const end = rawStart <= rawEnd ? rawEnd : rawStart;
       const daysCount = calculateClosureDays(start, end);
+      const dates = getDateRangeArray(start, end);
+      const rangeGroupId = start === end ? null : `range_${start}_${end}`;
 
-      const docData = {
-        id: holidayId,
-        title: bulkBlockData.title.trim(),
-        startDate: start,
-        endDate: end,
-        type: bulkBlockData.type,
-        notes: bulkBlockData.notes.trim() || 'Blocked off by administrator in Bulk Tool',
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?.email || 'admin'
-      };
+      // 1. Authoritative persistent write: save each day under holidays/YYYY-MM-DD
+      for (const dayStr of dates) {
+        const docData = {
+          id: dayStr,
+          title: bulkBlockData.title.trim(),
+          startDate: dayStr,
+          endDate: dayStr,
+          rangeStart: start,
+          rangeEnd: end,
+          rangeGroupId,
+          type: bulkBlockData.type,
+          notes: bulkBlockData.notes.trim() || 'Blocked off by administrator in Bulk Tool',
+          createdAt: new Date().toISOString(),
+          createdBy: auth.currentUser?.email || currentUser?.email || 'asikosman010@gmail.com'
+        };
 
-      const currentList = Array.isArray(holidays) ? holidays : [];
-      const updated = [...currentList.filter(h => h.id !== holidayId), docData].sort((a, b) => a.startDate.localeCompare(b.startDate));
-      setHolidays(updated);
-      try {
-        localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-      } catch (_) {}
+        await setDoc(doc(db, 'holidays', dayStr), docData);
 
-      // Broadcast instant update across all browser tabs/windows
-      try {
-        const channel = new BroadcastChannel('dentacare_clinic_sync');
-        channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
-        channel.close();
-      } catch (_) {}
-
-      try {
-        window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
-      } catch (_) {}
-
-      // Server API save
-      try {
-        const res = await fetch('/api/holidays', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(docData)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.holidays)) {
-            setHolidays(data.holidays);
-            try {
-              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
-            } catch (_) {}
-          }
-        }
-      } catch (apiErr) {
-        console.warn('API save note for bulk block:', apiErr);
-      }
-
-      try {
-        await setDoc(doc(db, 'holidays', holidayId), docData);
-      } catch (cloudErr) {
-        console.warn('Cloud setDoc notice:', cloudErr);
+        // Optional secondary API write
+        try {
+          await fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(docData)
+          });
+        } catch (_) {}
       }
 
       setJustConfirmedHoliday({
-        title: docData.title,
+        title: bulkBlockData.title.trim(),
         startDate: start,
         endDate: end,
         daysCount
@@ -833,7 +779,7 @@ export default function AdminDashboard() {
           await setDoc(doc(db, 'bookings', bId), {
             id: bId,
             patientName: `[CLINIC CLOSURE: ${bulkBlockData.title}]`,
-            patientEmail: currentUser?.email || 'admin@porterslakedental.com',
+            patientEmail: currentUser?.email || 'asikosman010@gmail.com',
             patientPhone: '902-827-2422',
             service: 'Clinic Closure Block',
             date: start,
@@ -848,11 +794,15 @@ export default function AdminDashboard() {
         } catch (_) {}
       }
 
-      toast.success(`Successfully confirmed & blocked dates for "${docData.title}"!`);
+      toast.success(`Successfully confirmed & blocked dates for "${bulkBlockData.title.trim()}"!`);
       setIsBulkModalOpen(false);
-    } catch (error) {
-      console.error('Failed to block dates:', error);
-      toast.error('Failed to block dates');
+    } catch (error: any) {
+      console.error('Failed to save bulk closure block:', error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Permission denied: You must be logged into Firebase Auth with an authorized admin account.');
+      } else {
+        toast.error(`Failed to block dates: ${error?.message || 'Database error'}`);
+      }
     } finally {
       setProcessingId(null);
     }

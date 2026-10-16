@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { useMounted } from '@/hooks/use-mounted';
 import { db, auth } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { 
   parseClinicDateTime, 
   CLINIC_TIME_ZONE, 
@@ -28,7 +28,8 @@ import {
   getHalifaxTodayDateStr,
   isPastDateInHalifax,
   DynamicHolidayItem,
-  formatToYYYYMMDD
+  formatToYYYYMMDD,
+  getDateRangeArray
 } from '@/lib/calendar';
 
 enum OperationType {
@@ -187,6 +188,7 @@ export default function BookingPage() {
       }
     };
 
+    const fetchHolidays = fetchBlockedDates;
     fetchBlockedDates();
 
     // 3. Real-time BroadcastChannel: instant (1ms) sync when admin deletes or adds closures
@@ -374,140 +376,121 @@ export default function BookingPage() {
     }
 
     setIsSubmittingAdminBlock(true);
-    const holidayId = `closure-${Date.now()}`;
-    const start = adminBlockData.startDate <= adminBlockData.endDate ? adminBlockData.startDate : adminBlockData.endDate;
-    const end = adminBlockData.startDate <= adminBlockData.endDate ? adminBlockData.endDate : adminBlockData.startDate;
+    const rawStart = formatToYYYYMMDD(adminBlockData.startDate);
+    const rawEnd = formatToYYYYMMDD(adminBlockData.endDate);
+    const start = rawStart <= rawEnd ? rawStart : rawEnd;
+    const end = rawStart <= rawEnd ? rawEnd : rawStart;
 
-    const newClosure: DynamicHolidayItem = {
-      id: holidayId,
-      title: adminBlockData.title.trim() || 'Clinic Closure',
-      startDate: start,
-      endDate: end,
-      type: 'closure',
-      notes: adminBlockData.notes.trim() || 'Blocked by Admin from Booking Calendar'
-    };
-
-    // 1. Optimistic local update
-    const currentList = Array.isArray(holidays) ? holidays : [];
-    const updated = [...currentList.filter(h => h.id !== holidayId), newClosure].sort((a, b) => a.startDate.localeCompare(b.startDate));
-    setHolidays(updated);
-    try {
-      localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-    } catch (_) {}
-
-    // 2. BroadcastChannel
-    try {
-      const channel = new BroadcastChannel('dentacare_clinic_sync');
-      channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
-      channel.close();
-    } catch (_) {}
+    // Get all calendar days in range and range group id
+    const dates = getDateRangeArray(start, end);
+    const rangeGroupId = start === end ? null : `range_${start}_${end}`;
 
     try {
-      window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
-    } catch (_) {}
-
-    // 3. Save to server API
-    try {
-      const res = await fetch('/api/holidays', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newClosure,
+      // 1. Authoritative persistent write: store every single blocked day under holidays/YYYY-MM-DD
+      for (const dayStr of dates) {
+        await setDoc(doc(db, 'holidays', dayStr), {
+          id: dayStr,
+          title: adminBlockData.title.trim() || 'Clinic Closure',
+          startDate: dayStr,
+          endDate: dayStr,
+          rangeStart: start,
+          rangeEnd: end,
+          rangeGroupId,
+          type: 'closure',
+          notes: adminBlockData.notes.trim() || 'Blocked by Admin from Booking Calendar',
           createdAt: new Date().toISOString(),
-          createdBy: currentUser?.email || 'admin'
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.holidays)) {
-          setHolidays(data.holidays);
-          try {
-            localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
-          } catch (_) {}
+          createdBy: auth.currentUser?.email || currentUser?.email || 'asikosman010@gmail.com'
+        });
+      }
+
+      // 2. Clear current selection if newly blocked date was selected
+      if (selectedDateStr && dates.includes(selectedDateStr)) {
+        setSelectedDateStr('');
+        setSelectedTime('');
+      }
+
+      // 3. Optional local secondary sync
+      try {
+        for (const dayStr of dates) {
+          await fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: dayStr,
+              title: adminBlockData.title.trim() || 'Clinic Closure',
+              startDate: dayStr,
+              endDate: dayStr,
+              rangeStart: start,
+              rangeEnd: end,
+              rangeGroupId,
+              type: 'closure',
+              notes: adminBlockData.notes.trim() || 'Blocked by Admin from Booking Calendar',
+              createdAt: new Date().toISOString(),
+              createdBy: auth.currentUser?.email || currentUser?.email || 'asikosman010@gmail.com'
+            })
+          });
         }
-      }
-    } catch (err) {
-      console.warn('API save note:', err);
-    }
+      } catch (_) {}
 
-    // 4. Save to Firestore if admin has cloud connection
-    try {
-      await setDoc(doc(db, 'holidays', holidayId), {
-        ...newClosure,
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?.email || 'admin'
-      });
+      toast.success(
+        dates.length === 1 
+          ? `Date ${dates[0]} is now blocked from public booking!`
+          : `All ${dates.length} days from ${start} to ${end} are now blocked from public booking!`
+      );
+      setIsAdminBlockModalOpen(false);
     } catch (err: any) {
-      console.warn('Firestore setDoc note:', err);
+      console.error('Firestore block date error:', err);
       if (err?.code === 'permission-denied') {
-        toast.info('Date blocked in clinic schedule! Note: Add this website domain to Firebase Console for cloud sync.');
+        toast.error('Permission denied: You must be logged into Firebase Auth with the authorized admin account (asikosman010@gmail.com).');
+      } else {
+        toast.error(`Failed to block date: ${err?.message || 'Database connection error'}`);
       }
+    } finally {
+      setIsSubmittingAdminBlock(false);
     }
-
-    // If the blocked date was currently selected, reset slot selection
-    if (selectedDateStr && selectedDateStr >= start && selectedDateStr <= end) {
-      setSelectedDateStr('');
-      setSelectedTime('');
-    }
-
-    toast.success(`Date ${start === end ? start : `${start} to ${end}`} is now blocked from public booking!`);
-    setIsAdminBlockModalOpen(false);
-    setIsSubmittingAdminBlock(false);
   };
 
   const handleAdminQuickUnblock = async (dateStr: string) => {
-    // Find matching closure
-    const matching = holidays.find(h => {
-      const s = h.startDate <= h.endDate ? h.startDate : h.endDate;
-      const e = h.startDate <= h.endDate ? h.endDate : h.startDate;
-      return dateStr >= s && dateStr <= e;
+    const targetDate = formatToYYYYMMDD(dateStr);
+    
+    // Find matching closure item or range group
+    const matching = holidays.filter(h => {
+      const s = formatToYYYYMMDD(h.startDate || h.rangeStart || '');
+      const e = formatToYYYYMMDD(h.endDate || h.rangeEnd || '');
+      return h.id === targetDate || (s && e && targetDate >= s && targetDate <= e);
     });
 
-    const closureId = matching?.id;
-
-    // Optimistically update
-    const updated = matching ? holidays.filter(h => h.id !== matching.id) : holidays;
-    setHolidays(updated);
-    try {
-      localStorage.setItem('dentacare_holidays', JSON.stringify(updated));
-    } catch (_) {}
+    const targetDoc = matching.find(h => h.id === targetDate);
+    const targetGroupId = targetDoc?.rangeGroupId;
 
     try {
-      const channel = new BroadcastChannel('dentacare_clinic_sync');
-      channel.postMessage({ type: 'HOLIDAYS_UPDATED', holidays: updated });
-      channel.close();
-    } catch (_) {}
+      // 1. Authoritative persistent delete in Google Cloud Firestore for target date
+      await deleteDoc(doc(db, 'holidays', targetDate));
 
-    try {
-      window.dispatchEvent(new CustomEvent('dentacare_holidays_updated', { detail: updated }));
-    } catch (_) {}
-
-    if (closureId) {
-      // 1. Server API delete
-      try {
-        const res = await fetch(`/api/holidays?id=${encodeURIComponent(closureId)}`, { method: 'DELETE' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.holidays)) {
-            setHolidays(data.holidays);
-            try {
-              localStorage.setItem('dentacare_holidays', JSON.stringify(data.holidays));
-            } catch (_) {}
+      // If part of a range group, delete remaining dates in that group as well
+      if (targetGroupId) {
+        const siblings = holidays.filter(h => h.rangeGroupId === targetGroupId && h.id !== targetDate);
+        for (const sib of siblings) {
+          if (sib.id) {
+            try { await deleteDoc(doc(db, 'holidays', sib.id)); } catch (_) {}
           }
         }
-      } catch (err) {
-        console.warn('API delete note:', err);
       }
 
-      // 2. Firestore delete
+      // 2. Secondary API cleanup
       try {
-        await deleteDoc(doc(db, 'holidays', closureId));
-      } catch (err) {
-        console.warn('Firestore delete note:', err);
+        await fetch(`/api/holidays?id=${encodeURIComponent(targetDate)}`, { method: 'DELETE' });
+      } catch (_) {}
+
+      toast.success(`Date ${targetDate} has been unblocked! Appointment booking is now open.`);
+    } catch (err: any) {
+      console.error('Firestore unblock error:', err);
+      if (err?.code === 'permission-denied') {
+        toast.error('Permission denied: You must be logged in as an authorized admin to unblock dates.');
+      } else {
+        toast.error(`Failed to unblock date: ${err?.message || 'Database error'}`);
       }
     }
-
-    toast.success(`Date ${dateStr} has been unblocked! Appointment booking is now open.`);
   };
 
   const validateStep3 = () => {
@@ -546,6 +529,26 @@ export default function BookingPage() {
     try {
       if (!selectedDateStr || !selectedTime) {
         throw new Error('Please select both a date and an available time slot.');
+      }
+
+      // 1. Strict real-time pre-flight verification against Firestore closure documents
+      const targetDate = formatToYYYYMMDD(selectedDateStr);
+      try {
+        const directDoc = await getDoc(doc(db, 'holidays', targetDate));
+        if (directDoc.exists()) {
+          const docData = directDoc.data();
+          throw new Error(`The clinic is closed on ${targetDate} (${docData?.title || 'Scheduled Closure'}). Appointments cannot be booked on closed dates.`);
+        }
+      } catch (checkErr: any) {
+        if (checkErr.message && checkErr.message.includes('clinic is closed')) {
+          throw checkErr;
+        }
+      }
+
+      // 2. Range closure verification against loaded Firestore closures
+      const closureCheck = isClinicClosure(targetDate, holidays);
+      if (closureCheck.isClosed) {
+        throw new Error(`The clinic is closed on ${targetDate} (${closureCheck.reason || 'Scheduled Closure'}). Please choose another date.`);
       }
 
       // Revalidate the selected date and slot immediately before saving, including past-date and expired-slot checks.
