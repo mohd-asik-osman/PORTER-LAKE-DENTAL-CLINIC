@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "test": "node --test tests/*.test.mjs",
+    "build": "cd /app/applet 2>/dev/null || true; next build",
+    "start": "cd /app/applet 2>/dev/null || true; next start",
+    "lint": "cd /app/applet 2>/dev/null || true; eslint .",
+    "test": "cd /app/applet 2>/dev/null || true; node --test tests/*.test.mjs",
     "clean": "next clean"
   },
   "dependencies": {

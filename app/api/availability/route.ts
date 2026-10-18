@@ -12,13 +12,25 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 
 function getDynamicClosures() {
+  const primaryPath = path.join(process.cwd(), 'data', 'holidays.json');
+  const tmpPath = '/tmp/dentacare_holidays.json';
+
   try {
-    const dataPath = path.join(process.cwd(), 'data', 'holidays.json');
-    if (fs.existsSync(dataPath)) {
-      const raw = fs.readFileSync(dataPath, 'utf-8');
-      return JSON.parse(raw);
+    if (fs.existsSync(primaryPath)) {
+      const raw = fs.readFileSync(primaryPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (_) {}
+
+  try {
+    if (fs.existsSync(tmpPath)) {
+      const raw = fs.readFileSync(tmpPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+
   return [];
 }
 

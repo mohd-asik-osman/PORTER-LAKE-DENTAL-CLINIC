@@ -1,0 +1,5 @@
+[install]
+# Prevent network timeouts by using local cache and existing node_modules
+offline = true
+exact = true
+auto = "auto"

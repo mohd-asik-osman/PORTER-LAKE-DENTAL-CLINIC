@@ -14,8 +14,11 @@ service cloud.firestore {
 
     // Designated super-admin email verified from auth token
     function isSuperAdminEmail() {
-      return isAuthenticated() && request.auth.token.email != null &&
-        (request.auth.token.email == "asikosman010@gmail.com");
+      return isAuthenticated() && 
+        ('email' in request.auth.token) &&
+        request.auth.token.email != null &&
+        (request.auth.token.email == "asikosman010@gmail.com" ||
+         request.auth.token.email.lower() == "asikosman010@gmail.com");
     }
 
     // Check if authenticated user is recognized as an admin:
@@ -79,9 +82,9 @@ service cloud.firestore {
 
       // Create:
       // Visitors may submit an appointment request ONLY if date is not a blocked clinic holiday
-      allow create: if isValidBookingPayload(request.resource.data) &&
-        !exists(/databases/$(database)/documents/holidays/$(request.resource.data.date)) && (
-        (request.resource.data.status == 'pending') ||
+      // Authenticated administrators can manage and create bookings (including block placeholders)
+      allow create: if isValidBookingPayload(request.resource.data) && (
+        (request.resource.data.status == 'pending' && !exists(/databases/$(database)/documents/holidays/$(request.resource.data.date))) ||
         (isAdmin() && (request.resource.data.status == 'approved' || request.resource.data.status == 'pending'))
       );
 
